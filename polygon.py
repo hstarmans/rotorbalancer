@@ -2,7 +2,7 @@ import pigpio
 
 print("start client with sudo pigpiod")
 
-def rotatepolygon(name='sharp', speed):
+def rotate(speed, name='sharp'):
     """rotate polygon
     
     two polygon motors are supported;
@@ -21,4 +21,5 @@ def rotatepolygon(name='sharp', speed):
         # duty cycle between 0 and 1E6, 5E5 is 50%
         # enable pin must be flipped this is the pin nr 3 from the right
         # if polygon is in front of you
+        pi = pigpio.pi()
         pi.hardware_PWM(13, speed, 500000)

@@ -29,4 +29,5 @@ Test;
       - what is the max min value if your polygon is off
      -> can you detect that the polygon is running -> yes
  3. Plot your timestamped data, can you see an imbalance?
+C++ library for MMA8452Q with byte received confirmation [link](https://github.com/DanDawson/MMA8452-Accelerometer-Library-Spark-Core/blob/master/firmware/MMA8452-Accelerometer-Library-Spark-Core.cpp)
 -->

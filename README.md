@@ -3,7 +3,7 @@
 The goal of this project is to make a balancer for rotors.
 
 # Method
-Details with pictures cdan be found on [Hackadday](https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser/log/172827-rotor-stabilization-experiments).
+Details with pictures cdan be found on [Hackaday](https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser/log/172827-rotor-stabilization-experiments).
 Vibrations caused by a spinning rotor are measured with an accelerometer.
 I did an experiment where I spun the rotor at 100 Hertz and recorded the vibrations for 1 second at 800 Hertz sampling frequency.
 Sampling of the signal must be equidistant or otherwise the discrete fourier transform can not be calculated.

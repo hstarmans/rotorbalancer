@@ -27,10 +27,10 @@ Accelerometer: <br>
 MMA8452Q triple axis accelerometer. The MMA8451Q can also be bought and is four times more accurate.
 The LIS3DH has higher sampling rates. <br>
 IR sensor: <br>
-The TCRT5000 IR LED sensor was used in a DIY LP turntable [tachometer](https://www.stockholmviews.com/wp/diy-lp-turntable-tachometer/). I bought one [here](https://benselectronics.nl/lijn-en-benaderings-detectie-tcrt5000f48e6f8fa719f5a33a4efaa36b5f7396/?gclid=EAIaIQobChMImsbwqfSW5wIVicx3Ch1p2Q60EAQYBSABEgII_fD_BwE/) <br>
+The TCRT5000 IR LED sensor was used in a DIY LP turntable [tachometer](https://www.stockholmviews.com/wp/diy-lp-turntable-tachometer/). I bought one [here](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) <br>
 Balancing putty: <br>
 In the industry two systems are used. A 2 component epoxy resin putty by [Weicon](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty)
-A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer.
+A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
 An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer.
 
 

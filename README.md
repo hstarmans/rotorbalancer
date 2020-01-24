@@ -5,7 +5,7 @@ The goal of this project is to make a balancer for rotors.
 # Status
 It has been shown that the data needed to balance the prism can be collected using an accelerometer and a
 a laser tachometer, the DT2234C+. A prism still hasn't been balanced as the signal of the laser tachometer can't be collected.
-
+As a result a new setup is built. The current plan is to use a Nano 33 with a TCRT5000 IR led. The Nano 33 has an on board accelerometer; the LSM9DS1. First experiments, indicate that the IR led sensor can also detect the position of the prism.
 
 # Method
 Details with pictures can be found on [Hackaday](https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser/log/172827-rotor-stabilization-experiments).
@@ -24,6 +24,7 @@ a photo camera having a global shutter. My current idea is a laser tachometer an
 
 # BOM
 Accelerometer: <br>
+The accelerometer of the LSM9DS1 is used, as it available on the Arduino Nano 33.
 MMA8452Q triple axis accelerometer. The MMA8451Q can also be bought and is four times more accurate.
 The LIS3DH has higher sampling rates. <br>
 IR sensor: <br>
@@ -32,9 +33,6 @@ Balancing putty: <br>
 In the industry two systems are used. A 2 component epoxy resin putty by [Weicon](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty)
 A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
 An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer.
-
-
-
 
 <!--
 You can buy a laser tachometer for 18 dollars and do tests with that.

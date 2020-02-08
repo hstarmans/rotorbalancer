@@ -38,3 +38,5 @@ _autosave-*
 *.svg
 *.jpg
 
+# Freecad temps
+.FCStd1

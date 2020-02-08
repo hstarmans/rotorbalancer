@@ -1,6 +1,11 @@
 # Rotor balancer
 
 The goal of this project is to make a balancer for rotors.
+I had to remove modemmanager as this caused problems with arduino, see [link](https://forum.arduino.cc/index.php?topic=575194.0).
+
+```console
+sudo apt --purge remove modemmanager
+```
 
 # Status
 It has been shown that the data needed to balance the prism can be collected using an accelerometer and a

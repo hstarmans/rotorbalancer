@@ -3,6 +3,9 @@
 
   Program that can be used to calibrate a rotor
 */
+// er zijn twee problemen --> 1 hij draait te langzaam
+// ga je die sticker zien?
+
 // modified library
 // change acceleration read out
 // hex(int('11000000',2)) = 0xc0
@@ -24,18 +27,32 @@ int divisor_half = 24;
 int int_received = 0;
 int myInts[1000];
 int16_t nogmeerints[1000];
+unsigned long tijd;
+
+
 
 // the setup routine runs once when you press reset:
 void setup() {
-  pinMode(A0, OUTPUT);  
+  pinMode(A3, OUTPUT);  
   // initialize serial communication at 9600 bits per second:
   Serial.begin(9600);
   while (!Serial);
   Serial.println("awaiting command");
-  if (!IMU.begin()) {
+  int imu_val = IMU.begin();
+  
+  if (imu_val==0) {
     Serial.println("Failed to initialize IMU!");
     while (1);
   }
+  if(imu_val == 2)
+  {
+    Serial.println("Code has been changed");
+  }
+  else{
+    Serial.println("Code was not changed!");
+  }
+
+  
 }
 
 
@@ -47,9 +64,10 @@ void loop() {
                break;
       case 1 : {Serial.println("Polygon motor on");
                int polygon_cnt = 0;
-               int total_time = 10*952;
+               int total_time = 952;
                int iteration = 0;
                float x, y, z;
+               tijd = millis();
                while(iteration<total_time){
                 if (IMU.accelerationAvailable()) {
                     iteration = iteration + 1;
@@ -59,13 +77,20 @@ void loop() {
                       polygon_cnt = 0;
                     }
                     if (polygon_cnt >= divisor_half){
-                      digitalWrite(A0, HIGH);
+                      digitalWrite(A3, HIGH);
                     }
                     else{
-                      digitalWrite(A0, LOW);
+                      digitalWrite(A3, LOW);
                     }
                }
                }
+               unsigned long difference; 
+               difference = millis()-tijd;
+               if(difference>100){
+                  Serial.println("Test failed");
+                  Serial.println(difference);
+               }
+               
                break;}
       default:{Serial.println(int_received); 
               Serial.println("Invalid command");

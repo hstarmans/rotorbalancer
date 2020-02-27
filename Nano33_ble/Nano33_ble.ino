@@ -1,96 +1,78 @@
-/*
-  Rotor calibration
+/* Author: Rik Starmans
+   Organization: Hexastorm
+   License: GPL3
+   About: polygon is pulsed for PANASONIC (AN44000A chip) scheme
+          polygon is rotated and accelerometer data and IR
+          sensor data is collected
+ */ 
+#include <Wire.h>
+#include <SPI.h>
+#include <SparkFunLSM9DS1.h>
+#include <Timer.h>
 
-  Program that can be used to calibrate a rotor
-*/
-// er zijn twee problemen --> 1 hij draait te langzaam
-// ga je die sticker zien?
+#define polygonPin A3
+#define 
 
-// modified library
-// change acceleration read out
-// hex(int('11000000',2)) = 0xc0
-// 952 = 1 1 0 
-//  2g = 0 0 
-// rest default 0 0
-// example hex(int('01110000',2)) = 0x70
-// 119 = 0 1 1
-// 4G = 1 0 
-// rest default 0 0
-// assumed division head to be changed to 2.0
-#include <Arduino_LSM9DS1.h>
+auto polygon_timer = timer_create_default();
 
 
-// you read out at 952 hertz, so i use a divisor of 48
-
-int divisor_half = 24;
-
-int int_received = 0;
-int myInts[1000];
-int16_t nogmeerints[1000];
-unsigned long tijd;
-
-
-
-// the setup routine runs once when you press reset:
-void setup() {
-  pinMode(A3, OUTPUT);  
-  // initialize serial communication at 9600 bits per second:
-  Serial.begin(9600);
-  while (!Serial);
-  Serial.println("awaiting command");
-  int imu_val = IMU.begin();
-  
-  if (imu_val==0) {
-    Serial.println("Failed to initialize IMU!");
-    while (1);
-  }
-  if(imu_val == 2)
-  {
-    Serial.println("Code has been changed");
-  }
-  else{
-    Serial.println("Code was not changed!");
-  }
-
-  
+bool toggle_polygon(void *) {
+  digitalWrite(polygonPin, !digitalRead(polygonPin)); 
+  return true; // keep timer active? true
 }
 
 
-// the loop routine runs over and over again forever:
+
+int int_received = 0;
+unsigned long tijd;
+LSM9DS1 imu;
+
+
+void setup() {
+  pinMode(polygonPin, OUTPUT);   
+  digitalWrite(polygonPin, LOW);
+  Serial.begin(115200);
+  while (!Serial);
+  Wire1.begin();
+  Wire1.setClock(400000);
+  while (!imu.begin(0x6B, 0X1E, Wire1)) 
+  {
+    Serial.println("Failed to communicate with LSM9DS1.");
+    Serial.println("Will retry in 1 second.");
+    delay(1000);
+  }
+  polygon_timer.every( ,toggle_polygon);
+}
+
 void loop() {
+    Serial.println("awaiting command");
+    Serial.println(imu.settings.gyro.sampleRate);
+    delay(1000);
     int_received = Serial.parseInt();
     switch(int_received) {
       case 0 : // parseInt polls and returns 0 if nothing is received so ignored
                break;
-      case 1 : {Serial.println("Polygon motor on");
-               int polygon_cnt = 0;
+      case 1 : {Serial.println("One received");
                int total_time = 952;
                int iteration = 0;
-               float x, y, z;
                tijd = millis();
                while(iteration<total_time){
-                if (IMU.accelerationAvailable()) {
-                    iteration = iteration + 1;
-                    IMU.readAcceleration(x, y, z);
-                    polygon_cnt = polygon_cnt + 1;
-                    if (polygon_cnt >= (divisor_half*2)){
-                      polygon_cnt = 0;
-                    }
-                    if (polygon_cnt >= divisor_half){
-                      digitalWrite(A3, HIGH);
-                    }
-                    else{
-                      digitalWrite(A3, LOW);
-                    }
-               }
+                if (imu.accelAvailable())
+                {
+                imu.readAccel();
+                iteration = iteration + 1;
+                }
                }
                unsigned long difference; 
                difference = millis()-tijd;
-               if(difference>100){
+               if(difference>1100){
                   Serial.println("Test failed");
                   Serial.println(difference);
                }
-               
+               else{
+                  Serial.println("Test succeeded in ms");
+                  Serial.println(difference);
+               }
                break;}
       default:{Serial.println(int_received); 
               Serial.println("Invalid command");

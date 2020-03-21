@@ -8,29 +8,37 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SparkFunLSM9DS1.h> // use modified fork
-#include <Timer.h> // https://github.com/contrem/arduino-timer
 
-#define polygonPin A3
-#define irsensorPin A0
+
+// main example
+//https://github.com/andenore/NordicSnippets/blob/master/examples/pwm/main.c
+// arduino example
+// http://fab.cba.mit.edu/classes/865.18/people/akaspar/code/chirp_optimized.ino
+
+#include "nrf.h"
+
+
+
+#define PWM0_ENABLED 1
+#define polygonPin A1
+#define irsensorPin A6
 
 // Settings
-const int polygon_freq = 20;  // Hertz
+const int polygon_div = 4; // 952/(5*2)  --> pulse at 95 Hertz 
 const int startup_time = 60;  // seconds
-const int samples = 1000; 
+const int samples = 10; 
 
-Timer<1, micros> polygon_timer;
 LSM9DS1 imu;
+//NRF_PWM0->PSEL.OUT[0]= 0;;
+
+
 
 // TODO: move sample_freqs to LSM9DS1 class
 const int sample_freqs[6] = {10, 50, 119, 238, 476, 952};
 unsigned int sample_freq = sample_freqs[6-1];
 int ir_data[samples];
 int16_t accel_data[samples];
-
-bool toggle_polygon(void *) {
-  digitalWrite(polygonPin, !digitalRead(polygonPin)); 
-  return true; // keep timer active? true
-}
+int polycounter = 0; 
 
 
 void setup() {
@@ -47,8 +55,16 @@ void setup() {
   }
   sample_freq = sample_freqs[imu.settings.accel.sampleRate-1];
   imu.calibrate();
-  polygon_timer.every( 1000000/polygon_freq, toggle_polygon);
 }
+
+void polyflip(){
+  polycounter = polycounter + 1;
+  if (polycounter>polygon_div){
+    polycounter = 0;
+    digitalWrite(polygonPin, !digitalRead(polygonPin)); 
+  }   
+}
+
 
 
 void loop() {
@@ -60,24 +76,26 @@ void loop() {
       case 0 : break;
       case 1 : {
         Serial.print("Spin up time ");
-        Serial.print(startup_time)
-        Serial.println(" seconds.")
+        Serial.print(startup_time);
+        Serial.println(" seconds.");
         unsigned int iteration = 0;
         while( iteration < startup_time*sample_freq){
-          polygon_timer.tick();
-          if (imu.accelAvailable()) ++iteration;
+          if (imu.accelAvailable()){
+            ++iteration;
+            polyflip();
+           }
         }
         Serial.print("Measurement time ");
         Serial.print(samples/sample_freq);
         Serial.println(" seconds.");
         iteration = 0;
         while(iteration<samples){
-          polygon_timer.tick();
           if (imu.accelAvailable()){
             ir_data[iteration] = analogRead(irsensorPin);
-            imu.readAccel();
+//            imu.readAccel();
             accel_data[iteration] = imu.ax;
             ++iteration;
+            polyflip();
           }
         }
         Serial.print("Writing results ");

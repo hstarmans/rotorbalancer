@@ -3,7 +3,6 @@
  *
  */
 #define PWM_PIN 5UL //(PIN A1 is PIN0.05 on microcontoller)
-#define PWM_POLARITY_OFFSET  (1 << 15)
 #include <nrf.h>
 
 // Looked at various snippets
@@ -42,9 +41,9 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("10 seconds on");
   NRF_PWM0->ENABLE = 1;
   NRF_PWM0->TASKS_SEQSTART[0] = 1;
-  Serial.println("10 seconds on");
   delay(10000);
   Serial.println("10 seconds off");
   NRF_PWM0->ENABLE = 0;

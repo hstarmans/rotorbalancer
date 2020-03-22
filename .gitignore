@@ -17,6 +17,9 @@ _autosave-*
 *-save.pro
 *-save.kicad_pcb
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
 # Netlist files (exported from Eeschema)
 *.net
 

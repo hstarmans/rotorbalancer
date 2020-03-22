@@ -17,7 +17,7 @@
 
 
 // Settings
-const int startup_time = 60;  // seconds
+const int startup_time = 10;  // seconds
 const int samples = 10;       
 const int frequency = 100;    // Hertz
 
@@ -86,16 +86,15 @@ void loop() {
         // enable pwn and spin rotor
         NRF_PWM0->ENABLE = 1;
         NRF_PWM0->TASKS_SEQSTART[0] = 1;
-        Serial.print("Spin up time ");
-        Serial.print(startup_time);
+        Serial.print("Process time ");
+        Serial.print(round(startup_time+samples/sample_freq));
         Serial.println(" seconds.");
+        // wait for polygon to stabilize
         unsigned int iteration = 0;
         while( iteration < startup_time*sample_freq){
           if (imu.accelAvailable()) ++iteration;
         }
-        Serial.print("Measurement time ");
-        Serial.print(samples/sample_freq);
-        Serial.println(" seconds.");
+        // execute measurements
         iteration = 0;
         while(iteration<samples){
           if (imu.accelAvailable()){
@@ -107,8 +106,14 @@ void loop() {
         }
         // disable pwm and stop rotor
         NRF_PWM0->ENABLE = 0;
-        NRF_PWM0->TASKS_SEQSTART[0] = 0;  
-        Serial.print("Writing results ");
+        NRF_PWM0->TASKS_SEQSTART[0] = 0;
+        Serial.print("Rotor frequency ");
+        Serial.print(frequency);
+        Serial.println(" Hz.");
+        Serial.print("Sample frequency ");
+        Serial.print(sample_freq);
+        Serial.println(" Hz.");
+        Serial.print("Samples collected ");
         Serial.println(samples);
         for(int sample = 0; sample<samples; sample++){
           Serial.println(ir_data[sample]);

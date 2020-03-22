@@ -6,55 +6,58 @@ from time import sleep
 import serial
 
 
-FILENAME = 'Nano33_ble.ino'
+FILENAME = 'Nano33_ble/Nano33_ble.ino'
 PORT = '/dev/ttyACM0'
-BOARD = 'Arduino Nano 33 BLE'
 BAUDRATE = 115200
-MEASURENTTIME = 90
 
 
 def upload():
     # https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc
-    cmd = ['arduino', '--upload', '--board', BOARD, '--port', PORT, FILENAME]
+    # board is specified by settting the Nano33 board to default in the IDE
+    cmd = ['arduino', '--upload', '--port', PORT, FILENAME]
     arduino = run(cmd)
-    print("The exit code was: %d" % arduino.returncode)
+    if arduino.returncode:
+        raise Exception("Exit code not zero, operation failed")
+    sleep(3) # wait for board to boot
 
 
-def main():
-    upload()
+def test_received(ser, text):
+    received, iteration = '', 0
+    while text not in received:
+        received, iteration = ser.readline().decode().strip(), iteration+1
+        if iteration>10:
+            ser.close()
+            raise Exception('Did not reiceve text; "{}"'.format(text))
+    return received
+
+
+def main(upload=False):
+    if upload:
+        upload()
     ser = serial.Serial(PORT, BAUDRATE, timeout=3)
-    received, iteration = '', 0
-    while received != 'Press 1 to start samples.':
-        received, iteration = ser.readline(), iteration+1
-        if iteration>10:
-            ser.close()
-            raise Exception('Did not receive press 1')
-    #TODO: add escape if iteration 10 is 
-    ser.write('1')
-    received, iteration = '', 0
-    while 'Measurement time' not in received:
-        received, iteration = ser.readline(), iteration+1
-        if iteration>10:
-            ser.close()
-            raise Exception('Measurement time')
-    measurement_time = received.split(' ')[2]
-    sleep(measurement_time*1.1)
-    while 'Writing results' not in received:
-        received, iteration = ser.readline(), iteration+1
-        if iteration>10:
-            ser.close()
-            raise Exception('Measurement time')
+    test_received(ser, 'Press 1 to start samples.')
+    ser.write('1'.encode())
+    received = test_received(ser, 'Process time')
+    measurement_time = float(received.split(' ')[2])
+    print("Sleeping {} seconds".format(measurement_time))
+    slept = 0
+    while slept<measurement_time:
+        sleep(5)
+        slept += 5
+        print(" Completed {} %".format(slept/measurement_time*100))
+    received = test_received(ser, 'Rotor frequency')
+    rotor_frequency = int(received.split(' ')[2])   
+    print("Rotor frequency {} Hz".format(rotor_frequency))
+    received = test_received(ser, 'Sample frequency')
+    sample_frequency = int(received.split(' ')[2])  
+    print("Sample frequency {} Hz".format(sample_frequency))
+    received = test_received(ser, 'Samples collected')
     samples = int(received.split(' ')[2])
-    results = []
-    for sample in range(samples):
-        results.append(int(ser.readline()))
-    while received != 'Measurement completed':
-        received, iteration = ser.readline(), iteration+1
-        if iteration>10:
-            ser.close()
-            raise Exception('Measurement not completed')
-    print("Execution successful")
+    print("Samples collected {}".format(samples))
+    measurements = []
+    for sample in range(samples*2): # you receive accelerometer and ir
+        measurements.append(int(ser.readline().decode().strip()))
+    test_received(ser, 'Measurement completed')
+    print('Execution successful')
     ser.close()
-    return samples
-
-
+    return measurements, rotor_frequency, sample_frequency

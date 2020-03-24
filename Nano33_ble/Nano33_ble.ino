@@ -9,7 +9,6 @@
 #define PWM_PIN 5UL  
 #define irsensorPin A6
 
-
 #include <Wire.h>
 #include <SPI.h>
 #include <SparkFunLSM9DS1.h> // use modified fork
@@ -25,11 +24,10 @@ const int frequency = 100;    // Hertz
 LSM9DS1 imu;
 // TODO: move sample_freqs to LSM9DS1 class
 const int sample_freqs[6] = {10, 50, 119, 238, 476, 952};
-unsigned int sample_freq = sample_freqs[5];
+unsigned int sample_freq;
 int ir_data[samples];
 int16_t accel_data[samples];
 uint16_t buf[] = {(1 << 15) | 1500}; // used for duty cycle, must be global
-
 
 void setuppolygon(int frequency) {
   // sets up hardware pwm
@@ -91,8 +89,18 @@ void loop() {
         Serial.println(" seconds.");
         // wait for polygon to stabilize
         unsigned int iteration = 0;
+        int tijd = millis();
         while( iteration < startup_time*sample_freq){
-          if (imu.accelAvailable()) ++iteration;
+             if (imu.accelAvailable())
+                {
+                imu.readAccel();
+                iteration = iteration + 1;
+                }
+        }
+        int verschil = millis()-tijd;
+        if(1.1*verschil<startup_time*1000||startup_time*1000<0.9*verschil){
+          // frequency accelerometer is probably wrong
+          Serial.println("Error: time difference out of bounds");
         }
         // execute measurements
         iteration = 0;
@@ -120,7 +128,7 @@ void loop() {
           Serial.println(accel_data[sample]);
         }
         Serial.println("Measurement completed");
-        break;        
+        break;
         }
       default:{
         Serial.println(int_received); 

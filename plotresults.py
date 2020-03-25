@@ -1,3 +1,8 @@
+# planning
+#   --> houder uitprinten
+#   --> cross correlatie opnieuw uitrekenen
+#   --> grootte imbalans bepalen
+
 import pickle
 import matplotlib.pyplot as plt
 import scipy.fftpack
@@ -5,47 +10,40 @@ from scipy.signal import square, sawtooth, correlate
 import numpy as np
 
 
-def readplotdata():
+def plotdata(results, saveplot=False):
     '''
-    displays keys of dictionary
+    plots frequency, time from results collected by by client
     '''
-    dct = pickle.load(open('20hertzprism.p', 'rb'))
-    for key, value in dct.items():
-        print(key)
-    # values = dct['values']
-    # x_accel = values[0]
-    # print(x_accel[1:30])
+    def plottime(data, ax):
+        t = [t*(1/results['sample_freq']) for t in range(len(data))]
+        ax.plot(t, data)
+        ax.grid()
+        ax.set_xlabel('Time')
 
+    def plotfrequency(data, ax): 
+        T = 1/results['sample_freq']
+        N = len(data)
+        xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+        yf = scipy.fftpack.fft(data)
+        ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
+        ax.set(xlabel='frequency (Hz)')
+        ax.grid()
 
-def plotdata():
-    '''
-    plots data in time
-    calculates discrete fourier transform plots amplitude or phase
-    '''
-    dct = pickle.load(open('20hertzmirror.p', 'rb'))
-    tpassed = dct['tpassed']
-    print("RPS is {}".format(dct['rps']))
-    values = dct['values']
-    x_res = values[1]
-    print(x_res)
-    x_accel = [x_res[i] for i in range(len(x_res)-1) if x_res[i]!=x_res[i+1]]
-    # time plot
-    # time = [t*(tpassed/len(x_accel)) for t in range(len(x_accel))]
-    # plt.plot(time, x_accel, 'ro')
-    # plt.show()
-    # discrete fourier transform
-    print(x_accel)
-    yf = scipy.fftpack.fft(x_accel)
-    T = tpassed/len(x_accel)  # THIS IS NOT CORRECT, sensor is 800 hertz
-    N = len(x_accel)
-    xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
-    fig, ax = plt.subplots()
-    ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
-    ax.set(xlabel='frequency (Hz)', ylabel='ticks (1000 ticks is g)')
-    ax.grid()
-    fig.savefig("20hertzmirror.png")
-    # plt.plot(xf, 2.0/N*np.angle(yf[:N//2]))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12,8))
+    fig.canvas.set_window_title("Frequency and time plots")
+    plottime(results['ac_meas'], axes[0,0])
+    axes[0,0].title.set_text('Acceleration vs time')
+    plotfrequency(results['ac_meas'], axes[0,1])
+    axes[0,1].title.set_text('Acceleration spectrum')
+    axes[0,1].set_ylabel('ticks (1000 ticks is g')
+    plottime(results['ir_meas'], axes[1,0])
+    axes[1,0].title.set_text('Infrared voltage vs time')
+    plotfrequency(results['ir_meas'], axes[1,1])
+    axes[1,1].title.set_text('Infrared spectrum')
+    plt.tight_layout()
     plt.show()
+    if saveplot:
+        fig.savefig("results.png")
 
 
 def crosscorrelate():
@@ -84,5 +82,3 @@ def crosscorrelate():
     print("Recovered time shift {}".format(recovered_time_shift))
     print("Recovered phase shift {}".format(recovered_phase_shift))
     
-
-plotdata()

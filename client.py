@@ -54,10 +54,13 @@ def main(upload=False):
     received = test_received(ser, 'Samples collected')
     samples = int(received.split(' ')[2])
     print("Samples collected {}".format(samples))
-    measurements = []
+    ac_meas, ir_meas = []
     for sample in range(samples*2): # you receive accelerometer and ir
-        measurements.append(int(ser.readline().decode().strip()))
+        res = int(ser.readline().decode().strip())
+        ac_meas.append(res) if sample%2 else ir_meas.append(res)
+    results = {'ac_meas':ac_meas, 'ir_meas':ir_meas, 'rot_freq':rotor_frequency, 
+               'sample_freq':sample_frequency}
     test_received(ser, 'Measurement completed')
     print('Execution successful')
     ser.close()
-    return measurements, rotor_frequency, sample_frequency
+    return results

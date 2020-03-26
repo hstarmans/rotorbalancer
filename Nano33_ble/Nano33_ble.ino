@@ -75,7 +75,8 @@ void setup() {
 
 void loop() {
     Serial.println("Press 1 to start samples.");
-    delay(1000);
+    Serial.println("Press 2 to calibrate IR sensor.");
+    Serial.setTimeout(2000);
     int int_received = Serial.parseInt();
     switch(int_received) {
       // parseInt polls and returns 0 if nothing is received so ignored
@@ -130,6 +131,16 @@ void loop() {
         Serial.println("Measurement completed");
         break;
         }
+      case 2 :{
+        Serial.setTimeout(500);
+        Serial.println("Starting IR calibration, press 1 to exit.");
+        while(true)
+        {
+          if (Serial.parseInt() == 1) break;
+          Serial.println(analogRead(irsensorPin));
+        }
+        break;
+      }
       default:{
         Serial.println(int_received); 
         Serial.println("Invalid command");

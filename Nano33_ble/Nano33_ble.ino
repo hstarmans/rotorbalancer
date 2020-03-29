@@ -17,8 +17,8 @@
 
 // Settings
 const int startup_time = 10;  // seconds
-const int samples = 10;       
-const int frequency = 100;    // Hertz
+const int samples = 3000;       
+const int frequency = 400;    // Hertz
 
 
 LSM9DS1 imu;
@@ -45,14 +45,19 @@ void setuppolygon(int frequency) {
   NRF_PWM0->DECODER     = (PWM_DECODER_LOAD_Common       << PWM_DECODER_LOAD_Pos) | 
                           (PWM_DECODER_MODE_RefreshCount << PWM_DECODER_MODE_Pos);
   NRF_PWM0->LOOP        = (PWM_LOOP_CNT_Disabled << PWM_LOOP_CNT_Pos);
-  NRF_PWM0->COUNTERTOP = round(1.0/(frequency*2)*1000000); // assumes prescaler is DIV_16 
+  NRF_PWM0->COUNTERTOP = round(1.0/(frequency)*1000000); // assumes prescaler is DIV_16 
   NRF_PWM0->SEQ[0].CNT = ((sizeof(buf) / sizeof(uint16_t)) << PWM_SEQ_CNT_CNT_Pos);
   NRF_PWM0->SEQ[0].ENDDELAY = 0;
   NRF_PWM0->SEQ[0].PTR = (uint32_t)&buf[0];
   NRF_PWM0->SEQ[0].REFRESH = 0;
   NRF_PWM0->SHORTS = 0;
-  NRF_PWM0->ENABLE = 0;
-  NRF_PWM0->TASKS_SEQSTART[0] = 0;
+  motoron(false);
+}
+
+
+void motoron(bool on){
+  NRF_PWM0->ENABLE = (int) on;
+  NRF_PWM0->TASKS_SEQSTART[0] = (int) on;
 }
 
 
@@ -76,22 +81,21 @@ void setup() {
 void loop() {
     Serial.println("Press 1 to start samples.");
     Serial.println("Press 2 to calibrate IR sensor.");
+    Serial.println("Press 3 to spin polygon.");
     Serial.setTimeout(2000);
     int int_received = Serial.parseInt();
     switch(int_received) {
       // parseInt polls and returns 0 if nothing is received so ignored
       case 0 : break;
       case 1 : {
-        // enable pwn and spin rotor
-        NRF_PWM0->ENABLE = 1;
-        NRF_PWM0->TASKS_SEQSTART[0] = 1;
+        motoron(true);
         Serial.print("Process time ");
         Serial.print(round(startup_time+samples/sample_freq));
         Serial.println(" seconds.");
         // wait for polygon to stabilize
         unsigned int iteration = 0;
         int tijd = millis();
-        while( iteration < startup_time*sample_freq){
+        while(iteration < startup_time*sample_freq){
              if (imu.accelAvailable())
                 {
                 imu.readAccel();
@@ -113,9 +117,7 @@ void loop() {
             ++iteration;
           }
         }
-        // disable pwm and stop rotor
-        NRF_PWM0->ENABLE = 0;
-        NRF_PWM0->TASKS_SEQSTART[0] = 0;
+        motoron(false);
         Serial.print("Rotor frequency ");
         Serial.print(frequency);
         Serial.println(" Hz.");
@@ -141,6 +143,18 @@ void loop() {
         }
         break;
       }
+      case 3 :{
+        motoron(true);
+        while(true){
+          Serial.setTimeout(500);
+          Serial.println("Spinning polygon, press 1 to exit.");
+          if (Serial.parseInt() == 1){
+            motoron(false);
+            break;
+          }
+        }
+        break; 
+      }      
       default:{
         Serial.println(int_received); 
         Serial.println("Invalid command");

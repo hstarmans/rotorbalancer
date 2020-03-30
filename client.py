@@ -21,11 +21,6 @@ def upload():
     sleep(3) # wait for board to boot
 
 
-def getserial():
-    pass
-
-
-
 def test_received(ser, text):
     received, iteration = '', 0
     while text not in received:

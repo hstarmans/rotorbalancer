@@ -165,7 +165,7 @@ def checker(freq6001, freq6002, freq4001, freq4002):
                    3 at 67 hertz
                    4 at 67 hertz
     
-    looks at several differences, seems to work best for 100 hertz, might be drag produced by sticker
+    looks at several differences, seems to work best for 100 hertz
     note; here 600 is 100 and 400 is 67
     """ 
 

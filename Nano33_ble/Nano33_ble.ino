@@ -6,13 +6,14 @@
           sensor data is collected
  */ 
 // rotor pulsed via pin A1, i.e. pin 0.05 on microcontroller
-#define PWM_PIN 5UL  
-#define irsensorPin A6
-
 #include <Wire.h>
 #include <SPI.h>
 #include <SparkFunLSM9DS1.h> // use modified fork
 #include "nrf.h"
+
+#define PWM_PIN 5UL  
+#define irsensorAPin A6
+#define irsensorDPin 2
 
 
 // Settings
@@ -63,7 +64,8 @@ void motoron(bool on){
 
 void setup() {
   setuppolygon(frequency);
-  pinMode(irsensorPin, INPUT);
+  pinMode(irsensorDPin, INPUT); 
+  pinMode(irsensorAPin, INPUT);
   Serial.begin(115200);
   while (!Serial);
   Wire1.begin();
@@ -95,6 +97,8 @@ void loop() {
         // wait for polygon to stabilize
         unsigned int iteration = 0;
         int tijd = millis();
+        //TODO: you could simplify with sleep
+        //      move the check after samples
         while(iteration < startup_time*sample_freq){
              if (imu.accelAvailable())
                 {
@@ -109,11 +113,15 @@ void loop() {
         }
         // execute measurements
         iteration = 0;
+        int digitalout = 1;
         while(iteration<samples){
+          if(digitalRead(irsensorDPin) == 0) digitalout = 0;
           if (imu.accelAvailable()){
-            ir_data[iteration] = analogRead(irsensorPin);
+            //ir_data[iteration] = analogRead(irsensorAPin);
+            ir_data[iteration] = digitalout;
             imu.readAccel();
             accel_data[iteration] = imu.ax;
+            digitalout = 1;
             ++iteration;
           }
         }
@@ -139,7 +147,8 @@ void loop() {
         while(true)
         {
           if (Serial.parseInt() == 1) break;
-          Serial.println(analogRead(irsensorPin));
+          Serial.println(analogRead(irsensorAPin));
+          Serial.println(digitalRead(irsensorDPin));
         }
         break;
       }

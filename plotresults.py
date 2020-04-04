@@ -1,8 +1,3 @@
-# planning
-#   --> houder uitprinten
-#   --> cross correlatie opnieuw uitrekenen
-#   --> grootte imbalans bepalen
-
 import pickle
 import matplotlib.pyplot as plt
 import scipy.fftpack
@@ -45,7 +40,7 @@ def plotdata(results, saveplot=False):
         xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
         yf = scipy.fftpack.fft(data)
         ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
-        ax.set(xlabel='frequency (Hz)')
+        ax.set(xlabel='Frequency (Hz)')
         ax.grid()
     
     # mean centering
@@ -158,11 +153,8 @@ def crosscorrelate(results, low, high, rotor, debug = False):
     # force the phase shift to be in [-pi:pi]
     recovered_phase_shift = 2*np.pi*(((0.5 + recovered_time_shift/(1/freq) % 1.0) - 0.5))
     print("Recovered time shift {}".format(recovered_time_shift))
-    print("Recovered phase shift {}".format(recovered_phase_shift))
+    print("Recovered phase shift {} radian".format(recovered_phase_shift))
     print("Recovered phase shift {} degrees".format(np.degrees(recovered_phase_shift)))
-
-    print("passes test but doesn't work")
-
 
 
 def checker(freq6001, freq6002, freq4001, freq4002):
@@ -170,18 +162,17 @@ def checker(freq6001, freq6002, freq4001, freq4002):
     check script; suppose you have 4 measurements
                    1 at 100 hertz
                    2 at 100 hertz
-                   3 at 60 hertz
-                   4 at 60 hertz
+                   3 at 67 hertz
+                   4 at 67 hertz
     
-    checks if phase difference ir and ac are the same between subsequent measurement at same speed
-    checks if phase difference single measurement is constant, in this cate the phase difference is zero as 
-    the mass is caused by the marker itself, you need a test weight
+    looks at several differences, seems to work best for 100 hertz, might be drag produced by sticker
+    note; here 600 is 100 and 400 is 67
     """ 
 
-    ac4001 = butter_bandpass_filter(freq4001['ac_meas'],50, 70, 952, order=6)
-    ac4002 = butter_bandpass_filter(freq4002['ac_meas'],50, 70, 952, order=6)
-    ir4001 = butter_bandpass_filter(freq4001['ac_meas'],50, 70, 952, order=6)
-    ir4002 = butter_bandpass_filter(freq4002['ac_meas'],50, 70, 952, order=6)
+    ac4001 = butter_bandpass_filter(freq4001['ac_meas'],60, 75, 952, order=6)
+    ac4002 = butter_bandpass_filter(freq4002['ac_meas'],60, 75, 952, order=6)
+    ir4001 = butter_bandpass_filter(freq4001['ir_meas'],60, 75, 952, order=6)
+    ir4002 = butter_bandpass_filter(freq4002['ir_meas'],60, 75, 952, order=6)
     print(correlate(ac4001, ac4002).argmax())
     print(correlate(ir4001, ir4002).argmax())
 
@@ -190,12 +181,13 @@ def checker(freq6001, freq6002, freq4001, freq4002):
 
     ac6001 = butter_bandpass_filter(freq6001['ac_meas'],90, 110, 952, order=6)
     ac6002 = butter_bandpass_filter(freq6002['ac_meas'],90, 110, 952, order=6)
-    ir6001 = butter_bandpass_filter(freq6001['ac_meas'],90, 110, 952, order=6)
-    ir6002 = butter_bandpass_filter(freq6002['ac_meas'],90, 110, 952, order=6)
+    ir6001 = butter_bandpass_filter(freq6001['ir_meas'],90, 110, 952, order=6)
+    ir6002 = butter_bandpass_filter(freq6002['ir_meas'],90, 110, 952, order=6)
 
     print(correlate(ac6001, ac6002).argmax())
     print(correlate(ir6001, ir6002).argmax())
-
+    # modulo (1/66.67)/(1/952)
+    # modulo (1/100)/(1/952)
 
     print(correlate(ir6001, ac6001).argmax())
     print(correlate(ir6002, ac6002).argmax())

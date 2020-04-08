@@ -26,7 +26,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
 
 def plotdata(results, saveplot=False):
     '''
-    plots frequency, time from results collected by by client
+    plots frequency, time from results collected
     '''
     def plottime(data, ax):
         t = [t*(1/results['sample_freq']) for t in range(len(data))]
@@ -42,16 +42,12 @@ def plotdata(results, saveplot=False):
         ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
         ax.set(xlabel='Frequency (Hz)')
         ax.grid()
-    
     # mean centering
     ac_meas = results['ac_meas']-np.mean(results['ac_meas'])
     ir_meas = results['ir_meas']-np.mean(results['ir_meas'])
-
     # band pass filter
     #ac_meas = butter_bandpass_filter(ac_meas, 300, 307, results['sample_freq'], order=6)
-    #ir_meas = butter_bandpass_filter(ir_meas, 300, 307, results['sample_freq'], order=6)
-
-    
+    #ir_meas = butter_bandpass_filter(ir_meas, 300, 307, results['sample_freq'], order=6)    
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12,8))
     fig.canvas.set_window_title("Frequency and time plots")
     plottime(ac_meas, axes[0,0])
@@ -69,54 +65,59 @@ def plotdata(results, saveplot=False):
         fig.savefig("results.png")
 
 
-# NOT AS SUITED AS CORRELATE
-# def fitpolynomals(results, low, high, freq, debug=False):
-#     # https://electronics.stackexchange.com/questions/311098/ways-of-estimating-phase-shift
-#     ac_meas = results['ac_meas']
-#     ir_meas = results['ir_meas']
-
-#     N = len(ac_meas)
-#     T = 1/results['sample_freq']
-#     x = np.linspace(0.0, N*T, N)
-
-#     if debug:
-#         print("debug activated")
-#         phasediff = np.pi*debug
-#         #phasediff = 0
-#         #timeshift = round(debug/T)
-#         x = np.linspace(0.0, N*T, N)
-#         ir_meas = np.sin(freq*2*np.pi*x+phasediff)
-#         #ir_meas = np.roll(ir_meas, timeshift)
-#         ac_meas = np.sin(freq*2*np.pi*x)
-
-
-#     # band pass filter
-#     ac_meas = butter_bandpass_filter(ac_meas, low, high, results['sample_freq'], order=6)
-#     ir_meas = butter_bandpass_filter(ir_meas, low, high, results['sample_freq'], order=6)
-#     # mean centering, SDV scaling
-#     ac_meas = ac_meas-np.mean(ac_meas)
-#     ac_meas = ac_meas/np.std(ac_meas)
-#     ir_meas =  ir_meas-np.mean(ir_meas)
-#     ir_meas = ir_meas/np.std(ir_meas )
-
-
-#     def func(x, freq, phasediff):
-#         # https://electronics.stackexchange.com/questions/311098/ways-of-estimating-phase-shift
-#         return np.sin(freq*2*np.pi*x+phasediff)
-
-#     popt1, pcov1 = curve_fit(func, x, ac_meas, bounds=([low,-np.pi],[high,np.pi]))
-#     popt2, pcov2 = curve_fit(func, x, ir_meas, bounds=([low,-np.pi],[high,np.pi]))
-
-#     print("Freq found is {}".format(np.mean([popt1[0], popt2[0]])))
-#     verschil = popt2[1]-popt1[1]
-#    print("Phase diff is {}".format(verschil))
-#    #return popt1, popt2
+def getdetails(measurement):
+    '''
+    estimate rotor frequency and putty location from measurements
+    '''
+    previous = -1
+    start_ind = [] 
+    cycle_time = []
+    # detect rising edges & store indices
+    for indx, val in enumerate(measurement['ir_meas']):
+        if (previous != -1) & (val-previous == 1):
+            start_ind.append(indx)
+        previous = val
+        # or do np roll and substract
+        if len(start_ind)>1:
+            cycle_time.append(start_ind[-1]-start_ind[-2])
+    samples_per_period = np.mean(cycle_time)
+    if np.abs(np.max(cycle_time)-np.min(cycle_time))>2:
+        print(max(cycle_time))
+        print(min(cycle_time))
+        print("WARNING: Rotor frequency seems inaccurate")
+        # check the signal --> something could be off
+    frequency = measurement['sample_freq'] / samples_per_period
+    print("Rotor frequency is {:.0f} Hz".format(frequency))
+    
+    # filter imporves results
+    ac_meas = list(butter_bandpass_filter(measurement['ac_meas'], 0.8*frequency,
+                   1.2*frequency, measurement['sample_freq'], order=6))
+    pos_max, pos_min = [], []
+    force = []
+    for index in range(len(start_ind)-1):
+        lst = ac_meas[start_ind[index]:start_ind[index+1]]
+        pos_max.append(lst.index(max(lst)))
+        pos_min.append(lst.index(min(lst)))
+        force.append(max(lst))
+    force = np.mean(force)
+    print("Force is {:.2f} a.u.".format(force))
+    def todegrees(positions):
+        pos_time = np.mean(positions)/measurement['sample_freq'] 
+        degrees  = pos_time/(1/frequency)*360
+        return degrees
+    max_deg = todegrees(pos_max)
+    min_deg = todegrees(pos_min)
+    if np.abs(np.abs(max_deg-min_deg)-180)>5:
+        print(max_deg)
+        print(min_deg)
+        print("WARNING: Degree measurement seems inaccurate")
+    print("Place putty at {:.0f} degrees".format(min_deg))
 
 
 def crosscorrelate(results, low, high, rotor, debug = False):
     '''
     function to test the difference in phase between the accelerometer 
-    signal and photo tachomater, fake signal is used at the moment\
+    signal and photo tachomater, fake signal can be used for debugging
      --> see https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves
     '''
     ac_meas = results['ac_meas']
@@ -124,7 +125,6 @@ def crosscorrelate(results, low, high, rotor, debug = False):
     freq = rotor # hertz, used to calculate phase shift
     N = len(ac_meas)
     T = 1/results['sample_freq']
-    
     if debug:
         print("debug activated")
         phasediff = np.pi*debug
@@ -133,7 +133,6 @@ def crosscorrelate(results, low, high, rotor, debug = False):
         ir_meas = np.sin(freq*2*np.pi*x+phasediff)
         #ir_meas = np.roll(ir_meas, timeshift)
         ac_meas = np.sin(freq*2*np.pi*x)
-
     # band pass filter
     ac_meas = butter_bandpass_filter(ac_meas, low, high, results['sample_freq'], order=6)
     ir_meas = butter_bandpass_filter(ir_meas, low, high, results['sample_freq'], order=6)
@@ -142,7 +141,6 @@ def crosscorrelate(results, low, high, rotor, debug = False):
     ac_meas = ac_meas/np.std(ac_meas)
     ir_meas =  ir_meas-np.mean(ir_meas)
     ir_meas = ir_meas/np.std(ir_meas )
-
     # calculate cross correlation of the two signal
     xcorr = correlate(ir_meas, ac_meas)
     # delta time array to match xcorrr
@@ -155,39 +153,3 @@ def crosscorrelate(results, low, high, rotor, debug = False):
     print("Recovered time shift {}".format(recovered_time_shift))
     print("Recovered phase shift {} radian".format(recovered_phase_shift))
     print("Recovered phase shift {} degrees".format(np.degrees(recovered_phase_shift)))
-
-
-def checker(freq6001, freq6002, freq4001, freq4002):
-    """
-    check script; suppose you have 4 measurements
-                   1 at 100 hertz
-                   2 at 100 hertz
-                   3 at 67 hertz
-                   4 at 67 hertz
-    
-    looks at several differences, seems to work best for 100 hertz
-    note; here 600 is 100 and 400 is 67
-    """ 
-
-    ac4001 = butter_bandpass_filter(freq4001['ac_meas'],60, 75, 952, order=6)
-    ac4002 = butter_bandpass_filter(freq4002['ac_meas'],60, 75, 952, order=6)
-    ir4001 = butter_bandpass_filter(freq4001['ir_meas'],60, 75, 952, order=6)
-    ir4002 = butter_bandpass_filter(freq4002['ir_meas'],60, 75, 952, order=6)
-    print(correlate(ac4001, ac4002).argmax())
-    print(correlate(ir4001, ir4002).argmax())
-
-    print(correlate(ir4001, ac4001).argmax())
-    print(correlate(ir4002, ac4002).argmax())
-
-    ac6001 = butter_bandpass_filter(freq6001['ac_meas'],90, 110, 952, order=6)
-    ac6002 = butter_bandpass_filter(freq6002['ac_meas'],90, 110, 952, order=6)
-    ir6001 = butter_bandpass_filter(freq6001['ir_meas'],90, 110, 952, order=6)
-    ir6002 = butter_bandpass_filter(freq6002['ir_meas'],90, 110, 952, order=6)
-
-    print(correlate(ac6001, ac6002).argmax())
-    print(correlate(ir6001, ir6002).argmax())
-    # modulo (1/66.67)/(1/952)
-    # modulo (1/100)/(1/952)
-
-    print(correlate(ir6001, ac6001).argmax())
-    print(correlate(ir6002, ac6002).argmax())

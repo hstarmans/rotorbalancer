@@ -1,36 +1,46 @@
 /* Author: Rik Starmans
    Organization: Hexastorm
    License: GPL3
-   About: polygon is pulsed for PANASONIC (AN44000A chip) scheme
+   About: polygon is pulsed for PANASONIC (AN44000A chip) scheme, midle pin, pin 3 AKA enable pin
           polygon is rotated and accelerometer data and IR
           sensor data is collected
  */ 
-// rotor pulsed via pin A1, i.e. pin 0.05 on microcontroller
+// rotor pulsed via pin A3, i.e. pin 0.29 on microcontroller
 #include <Wire.h>
 #include <SPI.h>
 #include <SparkFunLSM9DS1.h> // use modified fork
 #include "nrf.h"
 
-#define PWM_PIN 5UL  
+#define PWM_PIN 29UL  
 #define irsensorAPin A6
 #define irsensorDPin 2
 
 
 // Settings
 const int startup_time = 10;  // seconds
-const int samples = 3000;       
-const int frequency = 400;    // Hertz
+const int samples = 5000;
+// pulse frequency != rotor frequency
+// 20 hz approx 100 hz for panasonic
+// WARNING: if frequency too small COUNTERTOP out of range!!
+int frequency = 20;    // Hertz 
 
 
 LSM9DS1 imu;
 // TODO: move sample_freqs to LSM9DS1 class
 const int sample_freqs[6] = {10, 50, 119, 238, 476, 952};
+
 unsigned int sample_freq;
-int ir_data[samples];
+uint8_t ir_data[samples];
 int16_t accel_data[samples];
-uint16_t buf[] = {(1 << 15) | 1500}; // used for duty cycle, must be global
+// used for duty cycle, must be global
+uint16_t buf[1]; 
 
 void setuppolygon(int frequency) {
+  const int counterclock = 250000; // see manual 
+  // counter top must be between 3..32767
+  const uint16_t countertop = counterclock/frequency;
+  const uint16_t dutycycle = countertop/2; 
+  buf[0] = {dutycycle};
   // sets up hardware pwm
   //  source https://github.com/andenore/NordicSnippets/blob/master/examples/pwm/main.c
   // Start accurate HFCLK (XOSC)
@@ -40,16 +50,16 @@ void setuppolygon(int frequency) {
   // Configure PWM_PIN as output, and set it to 0
   NRF_GPIO->DIRSET = (1 << PWM_PIN);
   NRF_GPIO->OUTCLR = (1 << PWM_PIN);
-  NRF_PWM0->PRESCALER   = PWM_PRESCALER_PRESCALER_DIV_16; // 1 us
+  NRF_PWM0->PRESCALER   = PWM_PRESCALER_PRESCALER_DIV_64; // 250kHz clock
   NRF_PWM0->PSEL.OUT[0] = PWM_PIN;
   NRF_PWM0->MODE        = (PWM_MODE_UPDOWN_Up << PWM_MODE_UPDOWN_Pos);
   NRF_PWM0->DECODER     = (PWM_DECODER_LOAD_Common       << PWM_DECODER_LOAD_Pos) | 
                           (PWM_DECODER_MODE_RefreshCount << PWM_DECODER_MODE_Pos);
   NRF_PWM0->LOOP        = (PWM_LOOP_CNT_Disabled << PWM_LOOP_CNT_Pos);
-  NRF_PWM0->COUNTERTOP = round(1.0/(frequency)*1000000); // assumes prescaler is DIV_16 
+  NRF_PWM0->COUNTERTOP = (countertop << PWM_COUNTERTOP_COUNTERTOP_Pos);
   NRF_PWM0->SEQ[0].CNT = ((sizeof(buf) / sizeof(uint16_t)) << PWM_SEQ_CNT_CNT_Pos);
   NRF_PWM0->SEQ[0].ENDDELAY = 0;
-  NRF_PWM0->SEQ[0].PTR = (uint32_t)&buf[0];
+  NRF_PWM0->SEQ[0].PTR = ((uint32_t)&buf[0]<< PWM_SEQ_PTR_PTR_Pos);
   NRF_PWM0->SEQ[0].REFRESH = 0;
   NRF_PWM0->SHORTS = 0;
   motoron(false);
@@ -64,6 +74,7 @@ void motoron(bool on){
 
 void setup() {
   setuppolygon(frequency);
+  pinMode(A3, INPUT); 
   pinMode(irsensorDPin, INPUT); 
   pinMode(irsensorAPin, INPUT);
   Serial.begin(115200);
@@ -84,12 +95,15 @@ void loop() {
     Serial.println("Press 1 to start samples.");
     Serial.println("Press 2 to calibrate IR sensor.");
     Serial.println("Press 3 to spin polygon.");
+    Serial.println("Press 4 to check pulse frequency.");
+    Serial.println("Press 5 to set pulse frequency.");
     Serial.setTimeout(2000);
     int int_received = Serial.parseInt();
     switch(int_received) {
       // parseInt polls and returns 0 if nothing is received so ignored
       case 0 : break;
       case 1 : {
+        Serial.setTimeout(500);
         motoron(true);
         Serial.print("Process time ");
         Serial.print(round(startup_time+samples/sample_freq));
@@ -126,7 +140,7 @@ void loop() {
           }
         }
         motoron(false);
-        Serial.print("Rotor frequency ");
+        Serial.print("Pulse frequency ");
         Serial.print(frequency);
         Serial.println(" Hz.");
         Serial.print("Sample frequency ");
@@ -163,7 +177,45 @@ void loop() {
           }
         }
         break; 
-      }      
+      }
+      case 4 :{
+        Serial.setTimeout(1000);
+        Serial.println("Measuring pulse frequency.");
+        motoron(true);
+        int old = 0;
+        int counter = 0;
+        int current = 1;
+        float tijd = millis();
+        while (counter<100)
+        {
+         current = digitalRead(A3);
+         if((current==1)&&(old==0)) counter += 1;
+         old = current;
+        }
+        float frequency = (float)counter/((millis()-tijd)/1000);
+        Serial.print(frequency);
+        Serial.println(" Hz");
+        Serial.println("Pulse test completed.");
+        motoron(false); 
+        break;
+       } 
+      case 5 :{
+        while (true){
+          Serial.setTimeout(1000);
+          frequency = Serial.parseInt();
+          Serial.println("Set pulse frequency in Hz.");
+          if (frequency>9){
+            Serial.println("Accepted.");
+            setuppolygon(frequency);
+            break;
+          }
+          else if(0<frequency && frequency<9){
+            Serial.println("Invalid, countertop will overflow.");
+          }
+          // ignore 0
+        }
+        break;
+      }
       default:{
         Serial.println(int_received); 
         Serial.println("Invalid command");

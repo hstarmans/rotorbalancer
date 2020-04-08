@@ -1,51 +1,61 @@
 # Rotor balancer
-The goal of this project is to make a balancer for rotors.
-I had to remove modemmanager as this caused problems with arduino, see [link](https://forum.arduino.cc/index.php?topic=575194.0).
+The rotor balancer can be used to balance propellers from flying drones or laser mirror motors.
+The instrument can also be used as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor and record the accelerometer signal.
+The [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) can be used to detect the position of the rotor.
+The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer
+indicates the position where a balance weight, i.e. putty, has to be placed.
+In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer will be dependent upon rotor speed.
 
-```console
-sudo apt --purge remove modemmanager
-```
 
-# Status
-It has been shown that the data needed to balance the prism can be collected using an accelerometer and a
-a laser tachometer, the DT2234C+. A prism still hasn't been balanced as the signal of the laser tachometer can't be collected.
-As a result a new setup is built. The current plan is to use a Nano 33 with a TCRT5000 IR led. The Nano 33 has an on board accelerometer; the LSM9DS1. First experiments, indicate that the IR led sensor can also detect the position of the prism.
+# Installation
+Compile the firmware with the Arduino IDE and upload it to the Arduino nano 33 BLE.
+Connect to the board with a baudrate of 115200. Four options will be offered; start samples, calibrate IR sensor, spin polygon,
+check pulse frequency and set pulse frequency. <br>
+Place an aluminum foil sticker on your rotor. Check if the IR sensor can detect the sticker and set the threshold using a screwdriver on the
+TCRT5000 IR LED sensor so it only changes when it detects the sticker. Press 1 key to escape<br>
+Rotate the rotor by pressing 3 key and enter. Press 1 key and enter to escape. <br>
+The pulse frequency can be modified by adjusted with option 5 and checked using option 4.<br>
+Install python 3 and necessary packages on your computer and run the main method in the client script.
+Example measurements can found in the measurement folder. They can be opened with the python module pickle.
+Data can be plotted using the function plotdata in the calc module.
+
 
 # Method
 Details with pictures can be found on [Hackaday](https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser/log/172827-rotor-stabilization-experiments).
 Vibrations caused by a spinning rotor are measured with an accelerometer.
-I did an experiment where I spun the rotor at 100 Hertz and recorded the vibrations for 1 second at 800 Hertz sampling frequency.
+I did an experiment where I spun the rotor at 100 Hertz and recorded the vibrations for 3 seconds at 952 Hertz sampling frequency.
 Sampling of the signal must be equidistant or otherwise the discrete fourier transform can not be calculated.
-The amplitude of the discrete fourier transform at a 100 hertz is used to determine the balance weight.
-This amplitude can be linearly compared to the height of the amplitude determined from a known balance weight.
+The amplitude of the discrete fourier transform at a 100 Hertz is used to determine the balance weight.
+This amplitude can be linearly compared to the magnitude of the amplitude determined from a known balance weight.
 As the [centripetal force](https://en.wikipedia.org/wiki/Centripetal_force) is linear proportional to mass.
-A practical example is given by a case study in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185).
+In single plane balancing it is assumed that the angle of the force is not dependent upon speed. The phase-difference between the ir sensor and the acceloremeter determines this angle. The phase difference can be determined from the cross correlation of the two [signals](https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves). Noise is removed with a Butterworth filter.
+This method is available in the code. Currently another method is used. The minimum and maximum force is determined for each cycle. 
+The phase difference between these must be 180 degrees for the measurement to be accurate. The location of the minimum will be the location of the balance weight.
+A balance weight of less than a gram was needed. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately.
+Another practical example is given by a case study in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185).
 Note, above steps are only sufficient for single plane balancing. In two plane balancing, the procedure is more [complicated](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).
-To determine the position of the mass, the position of the rotor must be measured. For example by using a [photo tachometer](https://hackaday.com/2017/03/17/how-to-use-a-photo-tachometer/). The phase-difference of the periodic signal recorded with the laser sensor can be compared with the periodic signal of the acceloremeter. The cross correlation of the two signals can be determined and from it the phase difference, an example in Python is given [here](https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves).
-Other methods of determining the phase difference between two signals are listed [here](https://stackoverflow.com/questions/27545171/identifying-phase-shift-between-signals). In the open-hardware laser scanner, the position of the rotor can be determined by recording the number of facets counted with the photo diode.
-The challenge, however, is that the rotor is not fixed. My first idea was to measure the rotor with
-a photo camera having a global shutter. My current idea is a laser tachometer and a white glass marker.
+Imagine multiple disks with each their own unbalance. If the speed is increased all these unbalances will scale linearly. 
+Their moment is dependent upon the distance to a pivot point which is different. As a result, the angle of the force measured can be dependent upon speed.
+
+
+# Implementation details
+I had to remove modemmanager as this caused problems with [arduino](https://forum.arduino.cc/index.php?topic=575194.0).
+```console
+sudo apt --purge remove modemmanager
+```
+The accelerometer libary from [Sparkfun](https://github.com/sparkfun/SparkFun_LSM9DS1_Arduino_Library) was used in a slightly modified form.
+
 
 # BOM
+Prism:<br>
+4 sides, 30x30x2 mm <br>
+Mirror motor: <br>
+Panasonic AN4000A, other moters require different pins to be pulsed <br>
 Accelerometer: <br>
-The accelerometer of the LSM9DS1 is used, as it available on the Arduino Nano 33.
-MMA8452Q triple axis accelerometer. The MMA8451Q can also be bought and is four times more accurate.
-The LIS3DH has higher sampling rates. <br>
+The accelerometer of the LSM9DS1 is used, as it available on the Arduino Nano 33. <br>
 IR sensor: <br>
-The TCRT5000 IR LED sensor was used in a DIY LP turntable [tachometer](https://www.stockholmviews.com/wp/diy-lp-turntable-tachometer/). I bought one [here](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) <br>
+The [TCRT5000 IR LED sensor](https://www.stockholmviews.com/wp/diy-lp-turntable-tachometer/). I bought one [here](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) <br>
 Balancing putty: <br>
 In the industry two systems are used. A 2 component epoxy resin putty by [Weicon](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty)
 A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
-An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer.
-
-<!--
-You can buy a laser tachometer for 18 dollars and do tests with that.
-Test;
- 1. How many samples can you acquire per second -> 970
- 2. Timestamp and acquire your data
-      - what is the max min value if your polygon is on
-      - what is the max min value if your polygon is off
-     -> can you detect that the polygon is running -> yes
- 3. Plot your timestamped data, can you see an imbalance?
-C++ library for MMA8452Q with byte received confirmation [link](https://github.com/DanDawson/MMA8452-Accelerometer-Library-Spark-Core/blob/master/firmware/MMA8452-Accelerometer-Library-Spark-Core.cpp)
--->
+An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer. 

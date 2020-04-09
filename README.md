@@ -12,7 +12,7 @@ Compile the firmware with the Arduino IDE and upload it to the Arduino Nano 33 B
 Connect to the board with a baudrate of 115200. Five options will be offered; start samples, calibrate IR sensor, spin polygon,
 check pulse frequency and set pulse frequency. <br>
 Place an aluminum foil sticker on your rotor. Check if the IR sensor can detect the sticker and set the threshold using a screwdriver on the TCRT5000 IR LED sensor so it only changes when it detects the sticker. Use other menus to check if the polygon is spinning and set the pulse rate. Menus can typically be exited by pressing the 1 key and sending it with enter.
-A client side program has been made available in python 3. Command line options are available. <br>
+A client side program has been made available in python 3. <br>
 Install requirements;
 ```console
 pip install -r requirements.txt

@@ -1,9 +1,9 @@
 # Rotor balancer
 The rotor balancer can be used to balance propellers from flying drones or laser mirror motors.
-The instrument can also function as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor via hardware pwm and record the accelerometer signal via the onboard LSM9DS1 onboard accelerometer chip.
+The instrument can also function as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor via hardware pwm and record the accelerometer signal via the onboard LSM9DS1 accelerometer chip.
 During rotation the signal of a [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) is read out to detect the position of the rotor.
 The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
-In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer will be dependent upon rotor speed.
+In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer can be dependent upon rotor speed.
 
 
 # Installation
@@ -20,7 +20,7 @@ Program can be run as follows;
 ```console
 python main.py --plot --frequency 20 --filename '20hertz.p'
 ```
-Example measurements can found in the measurement folder. 
+Example measurements can found in the measurements folder. 
 
 
 # Method
@@ -61,4 +61,6 @@ The TCRT5000 IR LED sensor see [DIY LP turntable](https://www.stockholmviews.com
 Balancing putty: <br>
 In the industry two systems are used. A 2 component epoxy resin putty by [Weicon](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty)
 A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
-An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer. 
+An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer. <br>
+Optical plate: <br>
+Used an optical aluminum breadboard from Thorlabs with M6 screws as base. Attach device to something heavy.

@@ -1,21 +1,17 @@
 # Rotor balancer
 The rotor balancer can be used to balance propellers from flying drones or laser mirror motors.
-The instrument can also be used as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor and record the accelerometer signal.
-The [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) can be used to detect the position of the rotor.
-The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer
-indicates the position where a balance weight, i.e. putty, has to be placed.
+The instrument can also function as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor via hard pwm and record the accelerometer signal via the onboard LSM9DS1 onboard accelerometer chip.
+During rotation the signal of a [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) is read out to detect the position of the rotor.
+The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
 In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer will be dependent upon rotor speed.
 
 
 # Installation
-Compile the firmware with the Arduino IDE and upload it to the Arduino nano 33 BLE.
-Connect to the board with a baudrate of 115200. Four options will be offered; start samples, calibrate IR sensor, spin polygon,
+Compile the firmware with the Arduino IDE and upload it to the Arduino Nano 33 BLE.
+Connect to the board with a baudrate of 115200. Five options will be offered; start samples, calibrate IR sensor, spin polygon,
 check pulse frequency and set pulse frequency. <br>
-Place an aluminum foil sticker on your rotor. Check if the IR sensor can detect the sticker and set the threshold using a screwdriver on the
-TCRT5000 IR LED sensor so it only changes when it detects the sticker. Press 1 key to escape<br>
-Rotate the rotor by pressing 3 key and enter. Press 1 key and enter to escape. <br>
-The pulse frequency can be modified by adjusted with option 5 and checked using option 4.<br>
-Install python 3 and necessary packages on your computer and run the main method in the client script.
+Place an aluminum foil sticker on your rotor. Check if the IR sensor can detect the sticker and set the threshold using a screwdriver on the TCRT5000 IR LED sensor so it only changes when it detects the sticker. Use other menus to check if the polygon is spining and set the pulse rate. Menus can typically be exited by pressing the 1 key and sending it with enter.
+A client side program has been made available in python 3. Run the main method in the client script. Typically, I work directly from the ipython command shell. <br>
 Example measurements can found in the measurement folder. They can be opened with the python module pickle.
 Data can be plotted using the function plotdata in the calc module.
 
@@ -43,7 +39,7 @@ I had to remove modemmanager as this caused problems with [arduino](https://foru
 ```console
 sudo apt --purge remove modemmanager
 ```
-The accelerometer libary from [Sparkfun](https://github.com/sparkfun/SparkFun_LSM9DS1_Arduino_Library) was used in a slightly modified form.
+The accelerometer libary from [Sparkfun](https://github.com/sparkfun/SparkFun_LSM9DS1_Arduino_Library) is used in a slightly modified form.
 
 
 # BOM

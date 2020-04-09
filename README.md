@@ -5,6 +5,7 @@ During rotation the signal of a [TCRT5000 IR LED](https://opencircuit.nl/Product
 The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
 In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer can be dependent upon rotor speed.
 
+<img src="images/setup.jpg" align="center" height="300"/>
 
 # Installation
 Compile the firmware with the Arduino IDE and upload it to the Arduino Nano 33 BLE.
@@ -34,7 +35,7 @@ As the [centripetal force](https://en.wikipedia.org/wiki/Centripetal_force) is l
 In single plane balancing it is assumed that the angle of the force is not dependent upon speed. The phase-difference between the ir sensor and the acceloremeter determines this angle. The phase difference can be determined from the cross correlation of the two [signals](https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves). Noise is removed with a Butterworth filter.
 This method is available in the code. Currently another method is used. The minimum and maximum force is determined for each cycle. 
 The phase difference between these must be 180 degrees for the measurement to be accurate. The location of the minimum will be the location of the balance weight. The phase angle was relatively constant in the range 97-144 Hz but the force did follow a square law as expected from the centrepetal force. It is assumed this is due to nonlinearity in the materials and the imperfect setup. <br>
-A balance weight of less than a gram was needed. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately.
+A balance weight of 0.060 gram was needed. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately. An alternative is to cut of pieces of aluminium tape accurately. Fixing the device to the base plate did not improve measurements.
 Another practical example is given by a case study in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185).
 Note, above steps are only sufficient for single plane balancing. In two plane balancing, the procedure is more [complicated](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).
 Imagine multiple disks with each their own unbalance. If the speed is increased all these unbalances will scale linearly. 
@@ -63,4 +64,4 @@ In the industry two systems are used. A 2 component epoxy resin putty by [Weicon
 A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
 An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer. <br>
 Optical plate: <br>
-Used an optical aluminum breadboard from Thorlabs with M6 screws as base. Attach device to something heavy.
+Used an optical aluminum breadboard from Thorlabs with M6 screws as base. Do not attach the device too something heavy this make the measurements worse.

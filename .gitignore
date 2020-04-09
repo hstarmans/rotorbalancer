@@ -38,10 +38,5 @@ __pycache__/
 *.xml
 *.csv
 
-# Images
-*.png
-*.svg
-*.jpg
-
 # Freecad temps
 .FCStd1

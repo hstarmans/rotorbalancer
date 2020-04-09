@@ -4,6 +4,8 @@
 from subprocess import run
 from time import sleep
 import serial
+import argparse
+import pickle
 
 import calc
 
@@ -66,7 +68,7 @@ def main(frequency=20, plot=False, upload=False):
     ser.write('1'.encode())
     received = test_received(ser, 'Process time')
     measurement_time = float(received.split(' ')[2])
-    print("Sleeping {} seconds".format(measurement_time))
+    print("Waiting {} seconds for operation to complete".format(measurement_time))
     slept = 0
     sleep_step = 5 # seconds
     while slept<measurement_time:
@@ -93,7 +95,6 @@ def main(frequency=20, plot=False, upload=False):
     results = {'ac_meas':ac_meas, 'ir_meas':ir_meas, 'puls_freq':rotor_frequency, 
                'sample_freq':sample_frequency}
     test_received(ser, 'Measurement completed')
-    print('Execution successful')
     sleep(1)
     ser.close()
     try:
@@ -105,5 +106,21 @@ def main(frequency=20, plot=False, upload=False):
     return results
 
 
+def parser():
+    '''
+    default parser
+    '''
+    parser = argparse.ArgumentParser(add_help=True)
+    parser.add_argument('--plot', action="store_true", default=False, help='Plot results')
+    parser.add_argument('--upload', action="store_true", default=False, help='Upload firmware')
+    parser.add_argument('--frequency', action="store", default=20, type=int, help='Set frequency in Hz')
+    parser.add_argument('--filename', action="store", default=None, type=str, help='Filename to store results with pickle.')
+    return parser
+
+
 if __name__ == "__main__":
-    results = main()
+    parser = parser()
+    args = parser.parse_args()
+    results = main(args.frequency, args.plot, args.upload)
+    if args.filename:
+        pickle.dump(results, open(args.filename, 'wb'))

@@ -82,23 +82,25 @@ def getdetails(measurement):
             cycle_time.append(start_ind[-1]-start_ind[-2])
     samples_per_period = np.mean(cycle_time)
     if np.abs(np.max(cycle_time)-np.min(cycle_time))>2:
-        print(max(cycle_time))
-        print(min(cycle_time))
+        print("Max cycle time {:.2f} ".format(max(cycle_time)))
+        print("Min cycle time {:.2f} ".format(min(cycle_time)))
         print("WARNING: Rotor frequency seems inaccurate")
         # check the signal --> something could be off
     frequency = measurement['sample_freq'] / samples_per_period
     print("Rotor frequency is {:.0f} Hz".format(frequency))
     
-    # filter imporves results
+    # filter improves repeatability of phase shift for different speeds
     ac_meas = list(butter_bandpass_filter(measurement['ac_meas'], 0.8*frequency,
-                   1.2*frequency, measurement['sample_freq'], order=6))
+                   1.2*frequency, measurement['sample_freq'], order=6))  
     pos_max, pos_min = [], []
     force = []
     for index in range(len(start_ind)-1):
         lst = ac_meas[start_ind[index]:start_ind[index+1]]
         pos_max.append(lst.index(max(lst)))
         pos_min.append(lst.index(min(lst)))
-        force.append(max(lst))
+        force.append((max(lst)-min(lst))/2)
+    # the force doesn't scale squarly with speed as is expected form the centripetal force
+    # this could be due to the nonlinear behavior of the materials
     force = np.mean(force)
     print("Force is {:.2f} a.u.".format(force))
     def todegrees(positions):
@@ -108,8 +110,8 @@ def getdetails(measurement):
     max_deg = todegrees(pos_max)
     min_deg = todegrees(pos_min)
     if np.abs(np.abs(max_deg-min_deg)-180)>5:
-        print(max_deg)
-        print(min_deg)
+        print("Max degree {.2f}".format(max_deg))
+        print("Min degree {.2f}".format(min_deg))
         print("WARNING: Degree measurement seems inaccurate")
     print("Place putty at {:.0f} degrees".format(min_deg))
 

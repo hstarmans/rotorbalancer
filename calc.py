@@ -34,7 +34,7 @@ def plotdata(results, saveplot=False):
         ax.grid()
         ax.set_xlabel('Time')
 
-    def plotfrequency(data, ax): 
+    def plotfrequency(data, ax):
         T = 1/results['sample_freq']
         N = len(data)
         xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
@@ -47,7 +47,7 @@ def plotdata(results, saveplot=False):
     ir_meas = results['ir_meas']-np.mean(results['ir_meas'])
     # band pass filter
     #ac_meas = butter_bandpass_filter(ac_meas, 300, 307, results['sample_freq'], order=6)
-    #ir_meas = butter_bandpass_filter(ir_meas, 300, 307, results['sample_freq'], order=6)    
+    #ir_meas = butter_bandpass_filter(ir_meas, 300, 307, results['sample_freq'], order=6)
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12,8))
     fig.canvas.set_window_title("Frequency and time plots")
     plottime(ac_meas, axes[0,0])
@@ -70,7 +70,7 @@ def getdetails(measurement):
     estimate rotor frequency and putty location from measurements
     '''
     previous = -1
-    start_ind = [] 
+    start_ind = []
     cycle_time = []
     # detect rising edges & store indices
     for indx, val in enumerate(measurement['ir_meas']):
@@ -91,7 +91,7 @@ def getdetails(measurement):
     
     # filter improves repeatability of phase shift for different speeds
     ac_meas = list(butter_bandpass_filter(measurement['ac_meas'], 0.8*frequency,
-                   1.2*frequency, measurement['sample_freq'], order=6))  
+                   1.2*frequency, measurement['sample_freq'], order=6))
     pos_max, pos_min = [], []
     force = []
     for index in range(len(start_ind)-1):
@@ -104,21 +104,21 @@ def getdetails(measurement):
     force = np.mean(force)
     print("Force is {:.2f} a.u.".format(force))
     def todegrees(positions):
-        pos_time = np.mean(positions)/measurement['sample_freq'] 
+        pos_time = np.mean(positions)/measurement['sample_freq']
         degrees  = pos_time/(1/frequency)*360
         return degrees
     max_deg = todegrees(pos_max)
     min_deg = todegrees(pos_min)
     if np.abs(np.abs(max_deg-min_deg)-180)>5:
-        print("Max degree {.2f}".format(max_deg))
-        print("Min degree {.2f}".format(min_deg))
+        print("Max degree {:.2f}".format(max_deg))
+        print("Min degree {:.2f}".format(min_deg))
         print("WARNING: Degree measurement seems inaccurate")
     print("Place putty at {:.0f} degrees".format(min_deg))
 
 
 def crosscorrelate(results, low, high, rotor, debug = False):
     '''
-    function to test the difference in phase between the accelerometer 
+    function to test the difference in phase between the accelerometer
     signal and photo tachomater, fake signal can be used for debugging
      --> see https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves
     '''

@@ -4,6 +4,7 @@
 from subprocess import run
 from time import sleep
 import serial
+import serial.tools.list_ports
 import argparse
 import pickle
 
@@ -11,8 +12,19 @@ import calc
 
 
 FILENAME = 'Nano33_ble/Nano33_ble.ino'
-PORT = '/dev/ttyACM0'
 BAUDRATE = 115200
+SER = None
+
+
+def detectnano():
+    '''
+    detetect arduino Nano 33 BLE serial port
+    '''
+    arduino_ports = [p.device for p in serial.tools.list_ports.comports()
+                     if 'Nano 33 BLE' in p.description]
+    if not len(arduino_ports):
+        raise Exception("Arduino Nano 33 BLE not detected")
+    return arduino_ports[0]
 
 
 def upload():
@@ -28,28 +40,38 @@ def upload():
     sleep(3) # wait for board to boot
 
 
-def test_received(ser, text):
+def test_received(text):
     received, iteration = '', 0
+    global SER
+    if not SER:
+        SER = getserial()
     while text not in received:
-        received, iteration = ser.readline().decode().strip(), iteration+1
-        if iteration>10:
-            ser.close()
+        received, iteration = SER.readline().decode().strip(), iteration+1
+        if iteration>15:
             print("Received {}".format(received))
             raise Exception('Did not receive text; "{}"'.format(text))
     return received
+
+
+
+def getserial():
+    return serial.Serial(detectnano(), BAUDRATE, timeout=1)
 
 
 def set_frequency(frequency):
     '''
     set the hardware pwm frequency
     '''
-    ser = serial.Serial(PORT, BAUDRATE, timeout=1)
-    test_received(ser, 'Press 5 to set pulse frequency.')
-    ser.write('5'.encode())
-    test_received(ser, 'Set pulse frequency in Hz.')
-    ser.write(str(frequency).encode())
-    test_received(ser, 'Accepted.')
-    ser.close()
+    if frequency <10:
+        raise Exception("Out of range, change clock divider in firmware")
+    global SER
+    if not SER:
+        SER = getserial()
+    test_received('Press 5 to set pulse frequency.')
+    SER.write('5'.encode())
+    test_received('Set pulse frequency')
+    SER.write(str(frequency).encode())
+    test_received('Accepted.')
 
 
 def main(frequency=20, plot=False, upload=False):
@@ -59,14 +81,16 @@ def main(frequency=20, plot=False, upload=False):
     plot: if true results are plotted
     frequency: frequency used
     """
+    global SER
+    if not SER:
+        SER = getserial()
     print("Setting frequency to {} Hz".format(frequency))
     set_frequency(frequency)
-    ser = serial.Serial(PORT, BAUDRATE, timeout=1)
     if upload:
         upload()
-    test_received(ser, 'Press 1 to start samples.')
-    ser.write('1'.encode())
-    received = test_received(ser, 'Process time')
+    test_received('Press 1 to start samples.')
+    SER.write('1'.encode())
+    received = test_received('Process time')
     measurement_time = float(received.split(' ')[2])
     print("Waiting {} seconds for operation to complete".format(measurement_time))
     slept = 0
@@ -79,24 +103,23 @@ def main(frequency=20, plot=False, upload=False):
         else:
             sleep(sleep_step)
         print(" Completed {:.2f} %".format(slept/measurement_time*100))
-    received = test_received(ser, 'Pulse frequency')
+    received = test_received('Pulse frequency')
     rotor_frequency = int(received.split(' ')[2])   
     print("Pulse frequency {} Hz".format(rotor_frequency))
-    received = test_received(ser, 'Sample frequency')
+    received = test_received('Sample frequency')
     sample_frequency = int(received.split(' ')[2])  
     print("Sample frequency {} Hz".format(sample_frequency))
-    received = test_received(ser, 'Samples collected')
+    received = test_received('Samples collected')
     samples = int(received.split(' ')[2])
     print("Samples collected {}".format(samples))
     ac_meas, ir_meas = [], []
     for sample in range(samples*2): # you receive accelerometer and ir
-        res = int(ser.readline().decode().strip())
+        res = int(SER.readline().decode().strip())
         ac_meas.append(res) if sample%2 else ir_meas.append(res)
     results = {'ac_meas':ac_meas, 'ir_meas':ir_meas, 'puls_freq':rotor_frequency, 
                'sample_freq':sample_frequency}
-    test_received(ser, 'Measurement completed')
+    test_received('Measurement completed')
     sleep(1)
-    ser.close()
     try:
         calc.getdetails(results)
     except ValueError:
@@ -122,5 +145,6 @@ if __name__ == "__main__":
     parser = parser()
     args = parser.parse_args()
     results = main(args.frequency, args.plot, args.upload)
+    SER.close()
     if args.filename:
         pickle.dump(results, open(args.filename, 'wb'))

@@ -20,7 +20,7 @@ Program can be run as follows;
 ```console
 python main.py --plot --frequency 20 --filename '20hertz.p'
 ```
-Example measurements can found in the measurement folder. 
+Example measurements can found in the measurements folder. 
 
 
 # Method

@@ -3,7 +3,7 @@ The rotor balancer can be used to balance propellers from flying drones or laser
 The instrument can also function as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor via hardware pwm and record the accelerometer signal via the onboard LSM9DS1 accelerometer chip.
 During rotation the signal of a [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) is read out to detect the position of the rotor.
 The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
-In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer will be dependent upon rotor speed.
+In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer can be dependent upon rotor speed.
 
 
 # Installation

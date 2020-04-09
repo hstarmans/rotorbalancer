@@ -37,7 +37,7 @@ def plotdata(results, saveplot=False):
     def plotfrequency(data, ax): 
         T = 1/results['sample_freq']
         N = len(data)
-        xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+        xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
         yf = scipy.fftpack.fft(data)
         ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
         ax.set(xlabel='Frequency (Hz)')

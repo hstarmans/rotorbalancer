@@ -1,18 +1,18 @@
 # Rotor balancer
 The rotor balancer can be used to balance propellers from flying drones or laser mirror motors.
-The instrument can also function as a tachometer to record the speed of rotors. The Nano 33 BLE is used to pulse the motor via hardware pwm and record the accelerometer signal via the onboard LSM9DS1 accelerometer chip.
+The instrument is also a tachometer amd can record the speed of rotors. The Nano 33 BLE is used to pulse the motor via hardware pwm and record the accelerometer signal via the onboard LSM9DS1 accelerometer chip.
 During rotation the signal of a [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) is read out to detect the position of the rotor.
-The amplitude of the accelerometer signal is proportional to the unbalanced mass and the phase difference between the IR LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
+The amplitude of the accelerometer signal is proportional to the unbalanced mass. The phase difference between the infrared LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
 In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer can be dependent upon rotor speed.
 
 <img src="images/setup.jpg" align="center" height="300"/>
 
 # Installation
-Compile the firmware with the Arduino IDE and upload it to the Arduino Nano 33 BLE.
-Connect to the board with a baudrate of 115200. Five options will be offered; start samples, calibrate IR sensor, spin polygon,
+Compile the firmware with the Arduino IDE or Platform IO and upload it to the Arduino Nano 33 BLE.
+Connect to the board with a baudrate of 115200. Five options are available; start samples, calibrate IR sensor, spin polygon,
 check pulse frequency and set pulse frequency. <br>
 Place an aluminum foil sticker on your rotor. Check if the IR sensor can detect the sticker and set the threshold using a screwdriver on the TCRT5000 IR LED sensor so it only changes when it detects the sticker. Use other menus to check if the polygon is spinning and set the pulse rate. Menus can typically be exited by pressing the 1 key and sending it with enter.
-A client side program has been made available in python 3. <br>
+A program to collect measuremetns has been made available in python 3. <br>
 Install requirements;
 ```console
 pip install -r requirements.txt
@@ -64,4 +64,4 @@ In the industry two systems are used. A 2 component epoxy resin putty by [Weicon
 A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
 An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer. <br>
 Optical plate: <br>
-Used an optical aluminum breadboard from Thorlabs with M6 screws as base. Do not attach the device too something heavy this make the measurements worse.
+Used an optical aluminum breadboard from Thorlabs with M6 screws as base. Do not attach the device to something heavy this make the measurements worse. Typically, you want it decoupled from the external world and place the object under study on foam or hang it cords.

@@ -9,6 +9,20 @@ import numpy as np
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
+    '''butter bandpass
+
+    Code copied from 
+    https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
+
+    Keyword arguments:
+    order -- order of the butter filter
+    lowcut -- low frequency cut in Hz
+    highcut -- high frequency cut in Hz
+    fs -- frequency in Hz at which samples were taken
+
+    Returns
+    Scipy.signal butter filter
+    '''
     nyq = 0.5 * fs
     low = lowcut / nyq
     high = highcut / nyq
@@ -16,17 +30,36 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
     return b, a
 
 
-
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    '''butter bandpass filter
+
+    Code copied from 
+    https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
+
+    Keyword arguments:
+    data -- data to be filtered
+    lowcut -- low frequency cut in Hz
+    highcut -- high frequency cut in Hz
+    fs -- frequency in Hz at which samples were taken
+    order -- order of the butter filter
+
+    Returns
+    filtered signal
+    '''
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data)
     return y
 
 
-
 def plotdata(results, saveplot=False):
-    '''
-    plots frequency, time from results collected
+    '''plots frequency, time from results collected
+
+    Four plots are made; time plot of accelerometer signal, amplitude spectrum of accelerometer signal
+    time plot of infrared signal, amplitude specturm of infrared signal.
+
+    Keyword arguments:
+    results -- dictionary resulting from the main.main function
+    saveplot -- wether the plot has to be saved to disk
     '''
     def plottime(data, ax):
         t = [t*(1/results['sample_freq']) for t in range(len(data))]
@@ -66,8 +99,17 @@ def plotdata(results, saveplot=False):
 
 
 def getdetails(measurement):
-    '''
-    estimate rotor frequency and putty location from measurements
+    '''estimate rotor frequency and putty location from measurements
+
+    Rotor frequency is estimated from the time difference between subsequent
+    rising edges of the infrared signal.
+    Accelerometer phase is estimated from the maximum and minimum position in 
+    each cycle. The difference between these two signals should be 180 degrees.
+    Measurments are repeatable but the results will can so far not be linked to 
+    the real putty location or weight.
+
+    Keyword arguments:
+    measurement -- dictionary resulting from the main.main function
     '''
     previous = -1
     start_ind = []
@@ -117,10 +159,22 @@ def getdetails(measurement):
 
 
 def crosscorrelate(results, low, high, rotor, debug = False):
-    '''
-    function to test the difference in phase between the accelerometer
-    signal and photo tachomater, fake signal can be used for debugging
-     --> see https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-waves
+    '''obtains the difference in phase between the accelerometer an ir signal
+    
+    The function has been tested and produces reproducable results.
+    The result is not very accurate. With a sample frequency of 952 Hertz and a rotor frequency of 
+    100 Hertz, rouglhy 9.5 measurements are available per period so the outcome in degrees is not accurate
+    Therefore the function get details was developped and this is used as alternative.
+    In the code there is also the option to use a fake signal.
+    Code was copied from;
+    https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-
+
+    Keyword arguments:
+    results -- dictionary resulting from the main.main function
+    low -- low frequency cut in Hz, used to filter noise, should be lower than rotor frequency
+    high -- high frequency cut in Hz, used to filter noise, should higher than rotor frequency
+    rotor -- frequency at which the rotor is thought to rotate
+    debug -- makes fake ac_meas and ir_meas signals, used to test code
     '''
     ac_meas = results['ac_meas']
     ir_meas = results['ir_meas']

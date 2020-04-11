@@ -10,30 +10,22 @@ import pickle
 
 import calc
 
-
-FILENAME = 'Nano33_ble/Nano33_ble.ino'
-BAUDRATE = 115200
+# Placer holder for the Pyserial connection to the Nano33ble
+# set by getserial
 SER = None
 
 
-def detectnano():
-    '''
-    detetect arduino Nano 33 BLE serial port
-    '''
-    arduino_ports = [p.device for p in serial.tools.list_ports.comports()
-                     if 'Nano 33 BLE' in p.description]
-    if not len(arduino_ports):
-        raise Exception("Arduino Nano 33 BLE not detected")
-    return arduino_ports[0]
+def upload(filename='Nano33_ble/Nano33_ble.ino'):
+    '''upload firmware to the board via the arduino commmand line interface
 
+    Documentation details of arduino command line can be found at
+    https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc
+    Program can also be configured by running the IDE. 
 
-def upload():
+    Keyword arguments:
+    filename -- location of file to upload
     '''
-    upload the firmware to the ide via python
-    '''
-    # https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc
-    # board is specified by settting the Nano33 board to default in the IDE
-    cmd = ['arduino', '--upload', '--port', PORT, FILENAME]
+    cmd = ['arduino', '--upload', '--port', getports()[0], filename]
     arduino = run(cmd)
     if arduino.returncode:
         raise Exception("Exit code not zero, operation failed")
@@ -41,12 +33,18 @@ def upload():
 
 
 def test_received(text):
+    '''check of text is received on serial port
+
+    Keyword arguments:
+    text -- text as string expected to be received on serial line
+
+    Returns:
+    The full line of text this keyword was in as string
+    '''
     received, iteration = '', 0
-    global SER
-    if not SER:
-        SER = getserial()
+    ser = getserial()
     while text not in received:
-        received, iteration = SER.readline().decode().strip(), iteration+1
+        received, iteration = ser.readline().decode().strip(), iteration+1
         if iteration>15:
             print("Received {}".format(received))
             raise Exception('Did not receive text; "{}"'.format(text))
@@ -54,42 +52,76 @@ def test_received(text):
 
 
 
+def getports(name='Nano 33 BLE'):
+    '''get serial port for the NANO 33 BLE
+
+    Returns:
+    List with ports which have a Nano 33 BLE attached
+    '''
+    arduino_ports = [p.device for p in serial.tools.list_ports.comports()
+                     if name in p.description]
+    if not len(arduino_ports):
+        raise Exception("Arduino Nano 33 BLE not detected") 
+    return arduino_ports
+
+
 def getserial():
-    return serial.Serial(detectnano(), BAUDRATE, timeout=1)
+    '''get serial object for the NANO 33 BLE
+
+    The result is also set as global as a serial object.
+    Closing and opening the port too many times can break connection with the board.
+    This prevents it from being opened to many times.
+
+    Returns
+    pyserial object
+    '''
+    global SER
+    if not SER:
+        serial.Serial(getports()[0], 115200, timeout=1)
+    return SER
 
 
 def set_frequency(frequency):
-    '''
-    set the hardware pwm frequency
+    '''set the hardware pwm frequency of the Nano 33BLE
+
+    The frequency of the oscillator is use to move the motor.
+
+    Keyword arguments:
+    frequency -- frequency of the oscillitor in Hz
     '''
     if frequency <10:
         raise Exception("Out of range, change clock divider in firmware")
-    global SER
-    if not SER:
-        SER = getserial()
+    ser= getserial()
     test_received('Press 5 to set pulse frequency.')
-    SER.write('5'.encode())
+    ser.write('5'.encode())
     test_received('Set pulse frequency')
-    SER.write(str(frequency).encode())
+    ser.write(str(frequency).encode())
     test_received('Accepted.')
 
 
 def main(frequency=20, plot=False, upload=False):
+    """collects samples from the client
+    
+    Keyword arguments:
+    upload -- if true firmware is recompiled and uploaded to the board
+    plot -- if true acceleromater an infrared signal are plotted vs time
+            the amplitude of their Fourier transform is also shown
+    frequency -- frequency used of the oscillator in Hertz
+
+    Returns:
+    Python dictionary with keys;
+        ac_meas -- accelerometer measurements as list
+        ir_meas -- infrared measurements as list
+        purse_freq -- the frequency at which the rotor was driven
+        sample frequency -- sample frequency of the signal typically 952 Hz
     """
-    collects sample from the client
-    upload: if true firmware is uploaded
-    plot: if true results are plotted
-    frequency: frequency used
-    """
-    global SER
-    if not SER:
-        SER = getserial()
+    ser = getserial()
     print("Setting frequency to {} Hz".format(frequency))
     set_frequency(frequency)
     if upload:
         upload()
     test_received('Press 1 to start samples.')
-    SER.write('1'.encode())
+    ser.write('1'.encode())
     received = test_received('Process time')
     measurement_time = float(received.split(' ')[2])
     print("Waiting {} seconds for operation to complete".format(measurement_time))
@@ -114,7 +146,7 @@ def main(frequency=20, plot=False, upload=False):
     print("Samples collected {}".format(samples))
     ac_meas, ir_meas = [], []
     for sample in range(samples*2): # you receive accelerometer and ir
-        res = int(SER.readline().decode().strip())
+        res = int(ser.readline().decode().strip())
         ac_meas.append(res) if sample%2 else ir_meas.append(res)
     results = {'ac_meas':ac_meas, 'ir_meas':ir_meas, 'puls_freq':rotor_frequency, 
                'sample_freq':sample_frequency}
@@ -130,8 +162,10 @@ def main(frequency=20, plot=False, upload=False):
 
 
 def parser():
-    '''
-    default parser
+    '''creates parser for the command line interface of this script
+
+    Returns:
+    Argument parses
     '''
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument('--plot', action="store_true", default=False, help='Plot results')
@@ -145,6 +179,5 @@ if __name__ == "__main__":
     parser = parser()
     args = parser.parse_args()
     results = main(args.frequency, args.plot, args.upload)
-    SER.close()
     if args.filename:
         pickle.dump(results, open(args.filename, 'wb'))

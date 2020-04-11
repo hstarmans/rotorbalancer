@@ -4,14 +4,16 @@
    About: polygon is pulsed for PANASONIC (AN44000A chip) scheme, midle pin, pin 3 AKA enable pin
           polygon is rotated and accelerometer data and IR
           sensor data is collected
- */ 
-// rotor pulsed via pin A3, i.e. pin 0.29 on microcontroller
+*/
+
 #include <Wire.h>
 #include <SPI.h>
-#include <SparkFunLSM9DS1.h> // use modified fork
+// modified fork
+#include <SparkFunLSM9DS1.h> 
 #include "nrf.h"
 
-#define PWM_PIN 29UL  
+// rotor pulsed via pin A3, i.e. pin 0.29 on microcontroller
+#define PWM_PIN 29UL
 #define irsensorAPin A6
 #define irsensorDPin 2
 
@@ -35,8 +37,14 @@ int16_t accel_data[samples];
 // used for duty cycle, must be global
 uint16_t buf[1]; 
 
+void motoron(bool on){
+  NRF_PWM0->ENABLE = (int) on;
+  NRF_PWM0->TASKS_SEQSTART[0] = (int) on;
+}
+
+
 void setuppolygon(int frequency) {
-  const int counterclock = 250000; // see manual 
+  const int counterclock = 250000; 
   // counter top must be between 3..32767
   const uint16_t countertop = counterclock/frequency;
   const uint16_t dutycycle = countertop/2; 
@@ -50,7 +58,7 @@ void setuppolygon(int frequency) {
   // Configure PWM_PIN as output, and set it to 0
   NRF_GPIO->DIRSET = (1 << PWM_PIN);
   NRF_GPIO->OUTCLR = (1 << PWM_PIN);
-  NRF_PWM0->PRESCALER   = PWM_PRESCALER_PRESCALER_DIV_64; // 250kHz clock
+  NRF_PWM0->PRESCALER   = PWM_PRESCALER_PRESCALER_DIV_64; // 250kHz clock, see manual
   NRF_PWM0->PSEL.OUT[0] = PWM_PIN;
   NRF_PWM0->MODE        = (PWM_MODE_UPDOWN_Up << PWM_MODE_UPDOWN_Pos);
   NRF_PWM0->DECODER     = (PWM_DECODER_LOAD_Common       << PWM_DECODER_LOAD_Pos) | 
@@ -63,12 +71,6 @@ void setuppolygon(int frequency) {
   NRF_PWM0->SEQ[0].REFRESH = 0;
   NRF_PWM0->SHORTS = 0;
   motoron(false);
-}
-
-
-void motoron(bool on){
-  NRF_PWM0->ENABLE = (int) on;
-  NRF_PWM0->TASKS_SEQSTART[0] = (int) on;
 }
 
 
@@ -101,7 +103,8 @@ void loop() {
     int int_received = Serial.parseInt();
     switch(int_received) {
       // parseInt polls and returns 0 if nothing is received so ignored
-      case 0 : break;
+      case 0 : 
+      break;
       case 1 : {
         Serial.setTimeout(500);
         motoron(true);
@@ -153,9 +156,9 @@ void loop() {
           Serial.println(accel_data[sample]);
         }
         Serial.println("Measurement completed");
+      }
         break;
-        }
-      case 2 :{
+      case 2 :
         Serial.setTimeout(500);
         Serial.println("Starting IR calibration, press 1 to exit.");
         while(true)
@@ -165,8 +168,7 @@ void loop() {
           Serial.println(digitalRead(irsensorDPin));
         }
         break;
-      }
-      case 3 :{
+      case 3 :
         motoron(true);
         while(true){
           Serial.setTimeout(500);
@@ -177,7 +179,6 @@ void loop() {
           }
         }
         break; 
-      }
       case 4 :{
         Serial.setTimeout(1000);
         Serial.println("Measuring pulse frequency.");
@@ -198,8 +199,8 @@ void loop() {
         Serial.println("Pulse test completed.");
         motoron(false); 
         break;
-       } 
-      case 5 :{
+        }
+      case 5 :
         while (true){
           Serial.setTimeout(1000);
           frequency = Serial.parseInt();
@@ -212,14 +213,12 @@ void loop() {
           else if(0<frequency && frequency<9){
             Serial.println("Invalid, countertop will overflow.");
           }
-          // ignore 0
+          // ignore 0, default return value of parseInt
         }
         break;
-      }
-      default:{
+      default:
         Serial.println(int_received); 
         Serial.println("Invalid command");
         break;
-        }
     };
 }

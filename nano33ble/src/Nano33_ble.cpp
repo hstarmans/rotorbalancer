@@ -19,8 +19,8 @@
 
 
 // Settings
-const int startup_time = 10;  // seconds
-const int samples = 5000;
+const int startup_time = 20;  // seconds
+const int samples = 100;
 // pulse frequency != rotor frequency
 // 20 hz approx 100 hz for panasonic
 // WARNING: if frequency too small COUNTERTOP out of range!!
@@ -131,6 +131,9 @@ void loop() {
         // execute measurements
         iteration = 0;
         int digitalout = 1;
+        // having the motor on while measuring
+        // can interfere with measurements
+        motoron(false);
         while(iteration<samples){
           if(digitalRead(irsensorDPin) == 0) digitalout = 0;
           if (imu.accelAvailable()){
@@ -142,7 +145,6 @@ void loop() {
             ++iteration;
           }
         }
-        motoron(false);
         Serial.print("Pulse frequency ");
         Serial.print(frequency);
         Serial.println(" Hz.");

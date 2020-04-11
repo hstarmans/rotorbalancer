@@ -77,7 +77,7 @@ def getserial():
     '''
     global SER
     if not SER:
-        serial.Serial(getports()[0], 115200, timeout=1)
+        SER = serial.Serial(getports()[0], 115200, timeout=1)
     return SER
 
 
@@ -89,9 +89,9 @@ def set_frequency(frequency):
     Keyword arguments:
     frequency -- frequency of the oscillitor in Hz
     '''
-    if frequency <10:
+    if frequency < 10:
         raise Exception("Out of range, change clock divider in firmware")
-    ser= getserial()
+    ser = getserial()
     test_received('Press 5 to set pulse frequency.')
     ser.write('5'.encode())
     test_received('Set pulse frequency')
@@ -116,6 +116,8 @@ def main(frequency=20, plot=False, upload=False):
         sample frequency -- sample frequency of the signal typically 952 Hz
     """
     ser = getserial()
+    # read all lines to clear buffer
+    ser.readlines()
     print("Setting frequency to {} Hz".format(frequency))
     set_frequency(frequency)
     if upload:

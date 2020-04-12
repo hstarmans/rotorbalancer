@@ -98,10 +98,46 @@ def plotdata(results, saveplot=False):
         fig.savefig("results.png")
 
 
-def getdetails(measurement):
-    '''estimate rotor frequency and putty location from measurements
+def fitsinusoid(signal, fest, fs, debug=False):
+    '''fits a sinusoid on top of a signal
 
-    Rotor frequency is estimated from the time difference between subsequent
+    This sinusoidtion tries to exploit all accelerometer measurements.
+    Code was inspired from;
+    https://electronics.stackexchange.com/questions/311098/ways-of-estimating-phase-shift
+
+    Keyword arguments:
+    signal -- signal to fit sinusoid on
+    fest -- estimated frot of the sinusoid
+    fs -- sample frot
+    debug -- create fake signal with debug as phase shift
+
+    Returns:
+    The frot and the phase shift found
+    '''
+    N = len(signal)
+    T = 1/fs
+    x = np.linspace(0.0, N*T, N)
+
+    if debug:
+        print("debug activated")
+        phasediff = np.pi*debug
+        #phasediff = 0
+        #timeshift = round(debug/T)
+        x = np.linspace(0.0, N*T, N)
+        signal = np.sin(fest*2*np.pi*x+phasediff)
+
+    sinusoid = lambda x, A, phasediff: A*np.sin(fest*2*np.pi*x+phasediff)
+
+    popt, pcov = curve_fit(sinusoid, x, signal, bounds=([0.8*max(np.abs(signal)), 0],
+            [1.2*max(np.abs(signal)), 2*np.pi]))
+    A, phase = *popt,
+    return A, phase
+
+
+def getdetails(measurement, flt=True):
+    '''estimate rotor rotor frequency, force and putty location from measurements
+
+    Rotor frot is estimated from the time difference between subsequent
     rising edges of the infrared signal.
     Accelerometer phase is estimated from the maximum and minimum position in 
     each cycle. The difference between these two signals should be 180 degrees.
@@ -124,38 +160,51 @@ def getdetails(measurement):
             cycle_time.append(start_ind[-1]-start_ind[-2])
     samples_per_period = np.mean(cycle_time)
     if np.abs(np.max(cycle_time)-np.min(cycle_time))>2:
-        print("Max cycle time {:.2f} ".format(max(cycle_time)))
-        print("Min cycle time {:.2f} ".format(min(cycle_time)))
-        print("WARNING: Rotor frequency seems inaccurate")
+        print("Min freq {:.2f} ".format(measurement['sample_freq']/max(cycle_time)))
+        print("Max freq {:.2f} ".format(measurement['sample_freq']/min(cycle_time)))
+        print("WARNING: Rotor frequency seems not constant")
         # check the signal --> something could be off
-    frequency = measurement['sample_freq'] / samples_per_period
-    print("Rotor frequency is {:.0f} Hz".format(frequency))
-    
+    frot = measurement['sample_freq'] / samples_per_period
+    print("Rotor frequency is {:.0f} Hz".format(frot))
     # filter improves repeatability of phase shift for different speeds
-    ac_meas = list(butter_bandpass_filter(measurement['ac_meas'], 0.8*frequency,
-                   1.2*frequency, measurement['sample_freq'], order=6))
+    if flt:
+        low = 0.9*measurement['sample_freq']/max(cycle_time)
+        high = 1.1*measurement['sample_freq']/min(cycle_time)
+        ac_meas = list(butter_bandpass_filter(measurement['ac_meas'], low,
+                       high, measurement['sample_freq'], order=6))
+    else:
+        ac_meas = measurement['ac_meas']
     pos_max, pos_min = [], []
     force = []
+    Al, phasel = [], []
     for index in range(len(start_ind)-1):
         lst = ac_meas[start_ind[index]:start_ind[index+1]]
-        pos_max.append(lst.index(max(lst)))
-        pos_min.append(lst.index(min(lst)))
+        # optimized, using all measurements
+        frotest = measurement['sample_freq'] / len(lst)
+        A, phase = fitsinusoid(lst, frotest, measurement['sample_freq'])
+        Al.append(A)
+        phasel.append(phase)
+        # arithmic, using two points maximum and minimum
+        pos_max.append(lst.index(max(lst))/len(lst)*360)
+        pos_min.append(lst.index(min(lst))/len(lst)*360)
         force.append((max(lst)-min(lst))/2)
     # the force doesn't scale squarly with speed as is expected form the centripetal force
     # this could be due to the nonlinear behavior of the materials
-    force = np.mean(force)
-    print("Force is {:.2f} a.u.".format(force))
-    def todegrees(positions):
-        pos_time = np.mean(positions)/measurement['sample_freq']
-        degrees  = pos_time/(1/frequency)*360
-        return degrees
-    max_deg = todegrees(pos_max)
-    min_deg = todegrees(pos_min)
-    if np.abs(np.abs(max_deg-min_deg)-180)>5:
-        print("Max degree {:.2f}".format(max_deg))
-        print("Min degree {:.2f}".format(min_deg))
-        print("WARNING: Degree measurement seems inaccurate")
-    print("Place putty at {:.0f} degrees".format(min_deg))
+    print("Force is {:.2f} a.u.".format(np.mean(Al)))
+    phase = np.mean(phasel)
+    deg = phase/(2*np.pi)*360
+    print("Phase is {:.2f} degrees".format(deg))
+    
+    # arithmic
+    # force = np.mean(force)
+    # print("Force is {:.2f} a.u.".format(force))
+    # max_deg = np.mean(pos_max)
+    # min_deg = np.mean(pos_min)
+    # if np.abs(np.abs(max_deg-min_deg)-180)>5:
+    #     print("Max degree {:.2f}".format(max_deg))
+    #     print("Min degree {:.2f}".format(min_deg))
+    #     print("WARNING: Degree measurement seems inaccurate")
+    # print("Place putty at {:.0f} degrees".format(min_deg))
 
 
 def crosscorrelate(results, low, high, rotor, debug = False):

@@ -24,7 +24,7 @@ Example measurements can found in the measurements folder.
 
 # Measurements
 <img src="images/singleresult.png" align="center" height="400"/><br>
-For each measurement, the rotor was pulsed at aty certain frequency for 20 seconds.
+For each measurement, the rotor was pulsed at a certain frequency for 20 seconds.
 The motor was then turned off and the acceleration and infrared signal were measured over time.
 This was done as the the motor interfered with the measurements. Turning the motor of resulted in cleaner results.
 Sampling is equidistant at 952 Hertz as this was the maximum sampling frequency of the accelerometer.

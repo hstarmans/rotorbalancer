@@ -33,7 +33,7 @@ The [centripetal force](https://en.wikipedia.org/wiki/Centripetal_force) is line
 In single plane balancing it is assumed that the angle of the force is not dependent upon speed. The phase-difference between the ir sensor and the acceloremeter determines this angle. The phase difference and amplitude were determined via the getdetails function in calc.py. Noise was not removed with a bandpass Butterworth filter, as it did not improve results. The minimum and maximum is determined for each cycle. The phase difference between these must be 180 degrees for the measurement to be accurate. The location of the minimum will be the location of the balance weight. The result of another method, where a sinusoid was fitted on tip of the result, showed similar results. <br> 
 <img src="images/results.png" align="center" height="400"/><br>
 The force follows a square law between 40-60 Hertz but not over the whole domain. This could be partly due to 
-the fact that the rotor slows down. Other things most play a role as well as there is a noticable change around 78 hertz in both the force and phase plot. <br>
+the fact that the rotor slows down. Other things must play a role as well as there is a noticable change around 78 hertz in both the force and phase plot. <br>
 The phase angle between the minimum amplitude of the accelerometer and the peak of the photodiode is dependent upon speed.
 This is problably due to multiple plane unbalance. Imagine multiple disks with each their own unbalance. 
 Their moment is dependent upon the distance to a pivot point which is different. As a result, the angle of the force measured can be dependent upon speed. <br>

@@ -35,7 +35,7 @@ In single plane balancing it is assumed that the angle of the force is not depen
 The force follows a square law between 40-60 Hertz but not over the whole domain. This could be partly due to 
 the fact that the rotor slows down. Other things most play a role as well as there is a noticable change around 78 hertz in both the force and phase plot. <br>
 The phase angle between the minimum amplitude of the accelerometer and the peak of the photodiode is dependent upon speed.
-This is problably due to multiple plane unbalance. Imagine multiple disks with each their own unbalance. If the speed is increased all these unbalances will scale linearly. 
+This is problably due to multiple plane unbalance. Imagine multiple disks with each their own unbalance. 
 Their moment is dependent upon the distance to a pivot point which is different. As a result, the angle of the force measured can be dependent upon speed. <br>
 The measurements were done on a prism for which some balancing was already done. A balance weight of 0.060 gram [Weicon resin putty](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) was applied. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately. As a lower cost alternative, pieces of aluminium tape could be used. A small piece of aluminum tape was applied to trigger the IR Led sensor. <br>
 Futher literature can be found in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185) and at the site of [National Instruments](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).

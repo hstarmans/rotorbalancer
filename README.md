@@ -26,20 +26,20 @@ Example measurements can found in the measurements folder.
 <img src="images/singleresult.png" align="center" height="400"/><br>
 For each measurement, the rotor was pulsed at a certain frequency for 20 seconds.
 The motor was then turned off and the acceleration and infrared signal were measured for 1 second.
-This was done as the the motor interfered with the measurements. Turning the motor of resulted in cleaner results.
+This was done as the the motor interfered with the measurements. Turning the motor of resulted in cleaner results. <br>
 Sampling is equidistant at 952 Hertz as this was the maximum sampling frequency of the accelerometer.
 From the measurements it can be seen that the rotor slows down.
 The [centripetal force](https://en.wikipedia.org/wiki/Centripetal_force) is linear proportional to mass.
-In single plane balancing it is assumed that the angle of the force is not dependent upon speed. The phase-difference between the ir sensor and the acceloremeter determines this angle. The phase difference and amplitude were determined via the getdetails function in calc.py. Noise was not removed with a bandpass Butterworth filter, as it did not improve results. The minimum and maximum is determined for each cycle. The phase difference between these must be 180 degrees for the measurement to be accurate. The location of the minimum will be the location of the balance weight. The result of another method, where a sinusoid was fitted on tip of the result, showed similar results. <br> 
+In single plane balancing it is assumed that the angle of the force is not dependent upon speed. The phase-difference between the ir sensor and the acceloremeter determines the location where putty needs to be applied. The phase difference and amplitude were determined via the getdetails function in [calc.py](calc.py). The minimum and maximum is determined for each cycle. The phase difference between these must be 180 degrees for the measurement to be accurate. The location of the minimum will be the location of the balance weight.  <br> 
 <img src="images/results.png" align="center" height="400"/><br>
 The force follows a square law between 40-60 Hertz but not over the whole domain. This could be partly due to 
 the fact that the rotor slows down. Other things must play a role as well as there is a noticable change around 78 hertz in both the force and phase plot. <br>
 The phase angle between the minimum amplitude of the accelerometer and the peak of the photodiode is dependent upon speed.
 This is problably due to multiple plane unbalance. Imagine multiple disks with each their own unbalance. 
-Their moment is dependent upon the distance to a pivot point which is different. As a result, the angle of the force measured can be dependent upon speed. <br>
+Their moment is dependent upon the distance to a pivot point which is different and the force scales squarily with speed. As a result, the angle of the force measured can be dependent upon speed. <br>
 The measurements were done on a prism for which some balancing was already done. A balance weight of 0.060 gram [Weicon resin putty](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) was applied. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately. As a lower cost alternative, pieces of aluminium tape could be used. A small piece of aluminum tape was applied to trigger the IR Led sensor. <br>
 Futher literature can be found in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185) and at the site of [National Instruments](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).
-The measurements are available in the measurements folder. The code for the analysis is available in test.py.
+The measurements are available in the measurements folder. The code for the analysis is available in [test.py](test.py).
 
 
 # Implementation details

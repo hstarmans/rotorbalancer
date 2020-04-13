@@ -20,7 +20,7 @@
 
 // Settings
 const int startup_time = 20;  // seconds
-const int samples = 100;
+const int samples = 952;
 // pulse frequency != rotor frequency
 // 20 hz approx 100 hz for panasonic
 // WARNING: if frequency too small COUNTERTOP out of range!!

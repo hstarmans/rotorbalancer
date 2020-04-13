@@ -155,7 +155,7 @@ def main(frequency=20, plot=False, upload=False):
     test_received('Measurement completed')
     sleep(1)
     try:
-        calc.getdetails(results)
+        calc.getdetails(results, flt=False, verbose=True, arithmic=True)
     except ValueError:
         print("IR seems not properly triggered and overexposed.")
     if plot:

@@ -134,7 +134,7 @@ def fitsinusoid(signal, fest, fs, debug=False):
     return A, phase
 
 
-def getdetails(measurement, flt=True):
+def getdetails(measurement, flt=True, verbose=True, arithmic=False):
     '''estimate rotor rotor frequency, force and putty location from measurements
 
     Rotor frot is estimated from the time difference between subsequent
@@ -146,7 +146,15 @@ def getdetails(measurement, flt=True):
 
     Keyword arguments:
     measurement -- dictionary resulting from the main.main function
+    filter -- if true aplies bandpass butterworth filter
+    verbose -- if true prints information
+    arithmic -- if true use arithmic approach false use function fit
+
+    Returns:
+    Dictionary with keys rotor frequency in hertz, force in arbritrary units
+    and phase in degrees
     '''
+    results = dict.fromkeys({'frot','force','deg'})
     previous = -1
     start_ind = []
     cycle_time = []
@@ -159,13 +167,12 @@ def getdetails(measurement, flt=True):
         if len(start_ind)>1:
             cycle_time.append(start_ind[-1]-start_ind[-2])
     samples_per_period = np.mean(cycle_time)
-    if np.abs(np.max(cycle_time)-np.min(cycle_time))>2:
+    if np.abs(np.max(cycle_time)-np.min(cycle_time))>2 and verbose:
         print("Min freq {:.2f} ".format(measurement['sample_freq']/max(cycle_time)))
         print("Max freq {:.2f} ".format(measurement['sample_freq']/min(cycle_time)))
         print("WARNING: Rotor frequency seems not constant")
         # check the signal --> something could be off
-    frot = measurement['sample_freq'] / samples_per_period
-    print("Rotor frequency is {:.0f} Hz".format(frot))
+    results['frot'] = measurement['sample_freq'] / samples_per_period
     # filter improves repeatability of phase shift for different speeds
     if flt:
         low = 0.9*measurement['sample_freq']/max(cycle_time)
@@ -179,32 +186,33 @@ def getdetails(measurement, flt=True):
     Al, phasel = [], []
     for index in range(len(start_ind)-1):
         lst = ac_meas[start_ind[index]:start_ind[index+1]]
-        # optimized, using all measurements
-        frotest = measurement['sample_freq'] / len(lst)
-        A, phase = fitsinusoid(lst, frotest, measurement['sample_freq'])
-        Al.append(A)
-        phasel.append(phase)
-        # arithmic, using two points maximum and minimum
-        pos_max.append(lst.index(max(lst))/len(lst)*360)
-        pos_min.append(lst.index(min(lst))/len(lst)*360)
-        force.append((max(lst)-min(lst))/2)
-    # the force doesn't scale squarly with speed as is expected form the centripetal force
-    # this could be due to the nonlinear behavior of the materials
-    print("Force is {:.2f} a.u.".format(np.mean(Al)))
-    phase = np.mean(phasel)
-    deg = phase/(2*np.pi)*360
-    print("Phase is {:.2f} degrees".format(deg))
-    
-    # arithmic
-    # force = np.mean(force)
-    # print("Force is {:.2f} a.u.".format(force))
-    # max_deg = np.mean(pos_max)
-    # min_deg = np.mean(pos_min)
-    # if np.abs(np.abs(max_deg-min_deg)-180)>5:
-    #     print("Max degree {:.2f}".format(max_deg))
-    #     print("Min degree {:.2f}".format(min_deg))
-    #     print("WARNING: Degree measurement seems inaccurate")
-    # print("Place putty at {:.0f} degrees".format(min_deg))
+        if arithmic:
+            pos_max.append(lst.index(max(lst))/len(lst)*360)
+            pos_min.append(lst.index(min(lst))/len(lst)*360)
+            force.append((max(lst)-min(lst))/2)
+        else:
+            frotest = measurement['sample_freq'] / len(lst)
+            A, phase = fitsinusoid(lst, frotest, measurement['sample_freq'])
+            Al.append(A)
+            phasel.append(phase)
+    if arithmic:
+        results['force'] = np.mean(force)
+        max_deg = np.mean(pos_max)
+        min_deg = np.mean(pos_min)
+        if np.abs(np.abs(max_deg-min_deg)-180)>5 and verbose:
+            print("Max degree {:.2f}".format(max_deg))
+            print("Min degree {:.2f}".format(min_deg))
+            print("WARNING: Degree measurement seems inaccurate")
+        results['deg'] = min_deg
+    else:
+        results['force'] = np.mean(Al)    
+        results['deg'] = np.mean(phasel)/(2*np.pi)*360
+ 
+    if verbose:
+        print("Rotor frequency is {:.0f} Hz".format(results['frot']))
+        print("Force is {:.2f} a.u.".format(results['force'] ))
+        print("Phase is {:.2f} degrees".format(results['deg']))
+    return results
 
 
 def crosscorrelate(results, low, high, rotor, debug = False):

@@ -25,7 +25,7 @@ Example measurements can found in the measurements folder.
 # Measurements
 <img src="images/singleresult.png" align="center" height="400"/><br>
 For each measurement, the rotor was pulsed at a certain frequency for 20 seconds.
-The motor was then turned off and the acceleration and infrared signal were measured over time.
+The motor was then turned off and the acceleration and infrared signal were measured for 1 second.
 This was done as the the motor interfered with the measurements. Turning the motor of resulted in cleaner results.
 Sampling is equidistant at 952 Hertz as this was the maximum sampling frequency of the accelerometer.
 From the measurements it can be seen that the rotor slows down.
@@ -37,7 +37,7 @@ the fact that the rotor slows down. Other things most play a role as well as the
 The phase angle between the minimum amplitude of the accelerometer and the peak of the photodiode is dependent upon speed.
 This is problably due to the fact that there is multiple plane in balance. Imagine multiple disks with each their own unbalance. If the speed is increased all these unbalances will scale linearly. 
 Their moment is dependent upon the distance to a pivot point which is different. As a result, the angle of the force measured can be dependent upon speed. <br>
-The measurements were done on prism for which some balancing was already done. A balance weight of 0.060 gram [Weicon resin putty](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) was applied. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately. An alternative is to cut of pieces of aluminium tape. Futher literature can be found in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185) and at the site of [National Instruments](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).
+The measurements were done on a prism for which some balancing was already done. A balance weight of 0.060 gram [Weicon resin putty](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) was applied. I used an AG204 Delta range from Mettler to measure the weight of the putty accurately. An alternative is to cut of pieces of aluminium tape. Futher literature can be found in [Science direct](https://www.sciencedirect.com/science/article/pii/S2351988616300185) and at the site of [National Instruments](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).
 The measurements are available in the measurements folder. The code for the analysis is available in test.py.
 
 

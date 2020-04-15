@@ -4,7 +4,7 @@ The instrument is also a tachometer and can record the speed of rotors. The Nano
 During rotation the signal of a [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) is read out to detect the position of the rotor.
 The amplitude of the accelerometer signal is proportional to the unbalanced mass. The phase difference between the infrared LED and the accelerometer indicates the position where a balance weight, aka. putty, has to be placed.
 In the case of two plane unbalance, the phase difference between the IR Led and the accelerometer can be dependent upon rotor speed. <br>
-<img src="images/setup.jpg" align="center" height="400"/>
+<img src="images/setup.jpg" align="center" width =60%/>
 
 # Installation
 Compile the firmware with the Arduino IDE or Platform IO and upload it to the Arduino Nano 33 BLE.
@@ -22,8 +22,18 @@ python main.py --plot --frequency 20 --filename '20hertz.p'
 ```
 Example measurements can found in the measurements folder. 
 
+
+# Video
+For a better impression, I made a video of the setup.
+[<img src="https://img.youtube.com/vi/xFNtZbOfEfQ/maxresdefault.jpg" width="50%">](https://youtu.be/xFNtZbOfEfQ)
+
+# TODO:
+Substract the measuremens from an unbalanced prism from a balanced prism.
+This might make the results more intuitive.
+
+
 # Measurements
-<img src="images/singleresult.png" align="center" height="400"/><br>
+<img src="images/singleresult.png" align="center" width =100%/><br>
 For each measurement, the rotor was pulsed at a certain frequency for 20 seconds.
 The motor was then turned off and the acceleration and infrared signal were measured for 1 second.
 This was done as the the motor interfered with the measurements. Turning the motor of resulted in cleaner results. <br>
@@ -31,7 +41,7 @@ Sampling is equidistant at 952 Hertz as this was the maximum sampling frequency 
 From the measurements it can be seen that the rotor slows down.
 The [centripetal force](https://en.wikipedia.org/wiki/Centripetal_force) is linear proportional to mass.
 In single plane balancing it is assumed that the angle of the force is not dependent upon speed. The phase-difference between the ir sensor and the acceloremeter determines the location where putty needs to be applied. The phase difference and amplitude were determined via the getdetails function in [calc.py](calc.py). The minimum and maximum is determined for each cycle. The phase difference between these must be 180 degrees for the measurement to be accurate. The location of the minimum will be the location of the balance weight.  <br> 
-<img src="images/results.png" align="center" height="400"/><br>
+<img src="images/results.png" align="center" width =100%/><br>
 The force follows a square law between 40-60 Hertz but not over the whole domain. This could be partly due to 
 the fact that the rotor slows down. Other things must play a role as well as there is a noticable change around 78 hertz in both the force and phase plot. The spinning disk probably creates current in the motor which is turned off. <br>
 The phase angle between the minimum amplitude of the accelerometer and the peak of the photodiode is dependent upon speed.

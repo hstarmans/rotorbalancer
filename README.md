@@ -24,7 +24,7 @@ Example measurements can found in the measurements folder.
 
 
 # Video
-For a better impression, I made a video of the setup.
+For a better impression, I made a video of the setup. <br>
 [<img src="https://img.youtube.com/vi/xFNtZbOfEfQ/maxresdefault.jpg" width="50%">](https://youtu.be/xFNtZbOfEfQ)
 
 # TODO:

@@ -1,5 +1,4 @@
 import pickle
-import matplotlib.pyplot as plt
 import scipy.fftpack
 from scipy.signal import correlate, butter, lfilter
 from scipy.optimize import curve_fit
@@ -61,6 +60,9 @@ def plotdata(results, saveplot=False):
     results -- dictionary resulting from the main.main function
     saveplot -- wether the plot has to be saved to disk
     '''
+    # on headless system, a plot cannot be made so library should not
+    # be required
+    import matplotlib.pyplot as plt
     def plottime(data, ax):
         t = [t*(1/results['sample_freq']) for t in range(len(data))]
         ax.plot(t, data)
@@ -266,3 +268,4 @@ def crosscorrelate(results, low, high, rotor, debug = False):
     print("Recovered time shift {}".format(recovered_time_shift))
     print("Recovered phase shift {} radian".format(recovered_phase_shift))
     print("Recovered phase shift {} degrees".format(np.degrees(recovered_phase_shift)))
+

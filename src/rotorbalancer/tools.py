@@ -1,8 +1,8 @@
 import pickle
 from os.path import join
 
-import main
-import calc
+from . import main
+from . import calc
 
 folder = 'measurements'
 
@@ -15,7 +15,7 @@ def runtest():
             print("cycle {}".format(i))
             res = main.main(frequency=f)
             filename = join(folder, str(f)+str(i)+'.p')
-            pickle.dump(res, open(filename,'wb'))
+            pickle.dump(res, open(filename, 'wb'))
 
 
 def loadfiles(flt, verbose, arithmic):
@@ -27,22 +27,29 @@ def loadfiles(flt, verbose, arithmic):
     '''
     import pandas as pd
     df = None
-    for f in range(10,21):
-        for i in range(0,10):
+    for f in range(10, 21):
+        for i in range(0, 10):
             filename = join(folder, str(f)+str(i)+'.p')
             dct = pickle.load(open(filename, 'rb'))
             # first 0.1 second selected
             # quickly dampens out so only holds for first 0.1 second
-            #dct['ac_meas'] = dct['ac_meas'][50:150]
-            #dct['ir_meas'] = dct['ir_meas'][50:150]
-            results = pd.DataFrame(calc.getdetails(dct, flt=flt, verbose=verbose, arithmic=arithmic), index=[0])
+            # dct['ac_meas'] = dct['ac_meas'][50:150]
+            # dct['ir_meas'] = dct['ir_meas'][50:150]
+            results = pd.DataFrame(calc.getdetails(dct,
+                                                   flt=flt,
+                                                   verbose=verbose,
+                                                   arithmic=arithmic),
+                                   index=[0])
             df = results if df is None else pd.concat([df, results])
     return df
+
 
 def plotfiles(df):
     '''plot dataframe from load files'''
     import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12,8))
+    fig, axes = plt.subplots(nrows=1,
+                             ncols=2,
+                             figsize=(12, 8))
     fig.canvas.set_window_title("Degree and force plotted vs rotor frequency")
     # plot two columns with respect to each other
     axes[0].scatter(df['frot'], df['force'])

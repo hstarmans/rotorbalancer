@@ -17,6 +17,10 @@ Install requirements;
 ```console
 pip install -r requirements.txt
 ```
+Install package;
+```console
+pip install -e .
+```
 Program can be run as follows;
 ```console
 python main.py --plot --frequency 20 --filename '20hertz.p'

@@ -20,7 +20,10 @@ _autosave-*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
-
+*.egg
+*.ipynb
+*.egg-info
+*checkpoint*
 # Netlist files (exported from Eeschema)
 *.net
 
@@ -41,3 +44,4 @@ __pycache__/
 
 # Freecad temps
 .FCStd1
+

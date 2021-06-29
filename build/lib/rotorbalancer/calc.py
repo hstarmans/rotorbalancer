@@ -1,7 +1,3 @@
-import pickle
-
-from os.path import dirname
-from pathlib import Path
 import scipy.fftpack
 from scipy.signal import correlate, butter, lfilter
 from scipy.optimize import curve_fit
@@ -9,8 +5,6 @@ from scipy.optimize import curve_fit
 
 import numpy as np
 
-root_folder = Path(dirname(dirname(dirname(__file__))),
-                   'measurements')
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
     '''butter bandpass
@@ -53,20 +47,6 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data)
     return y
-
-
-def read_file(folder, fname):
-    '''reads file from folder with filename
-
-    Keyword arguments:
-        folder -- name of folder
-        fname -- name of file
-    '''
-    if folder:
-        folder = Path(root_folder, folder)
-    else:
-        folder = root_folder
-    return pickle.load(open(Path(folder, fname), 'rb'))
 
 
 def plotdata(results, saveplot=False):

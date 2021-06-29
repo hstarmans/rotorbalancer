@@ -1,46 +1,68 @@
+import os
+from os.path import dirname
+from pathlib import Path
 import pickle
-from os.path import join
+
 
 from . import main
 from . import calc
 
-folder = 'measurements'
+root_folder = Path(dirname(dirname(dirname(__file__))),
+                   'measurements')
 
 
-def runtest():
-    '''run main.main function over range of frequencies and multiple times'''
-    for f in range(11, 101, 10):
-        print("measuring {}".format(f))
-        for i in range(0, 1):
-            print("cycle {}".format(i))
+def runtest(starthz, endhz, stephz, foldername, repeat=1):
+    '''store infrared and accelerometer for a range of frequencies
+
+    starthz -- start frequency [Hz]
+    endhz -- end frequency [Hz]
+    stephz -- step frequency [Hz]
+    repeat -- time to repeat measurement
+    '''
+    for f in range(starthz, endhz, stephz):
+        print(f"measuring {f} Hz")
+        for i in range(0, repeat):
+            print(f"Cycle {i}")
             res = main.main(frequency=f)
-            filename = join(folder, str(f)+str(i)+'.p')
+            filename = Path(root_folder, foldername, str(f)+str(i)+'.p')
             pickle.dump(res, open(filename, 'wb'))
 
 
-def loadfiles(flt, verbose, arithmic):
+def loadfiles(flt, verbose, arithmic, folder=None):
     '''load measurements and get dataframe with results
 
     Keyword arguments are applied to get details functions
+
+    flt -- true applies bandpass butterwoth filter
+    verbose -- print debugging information
+    arithmic -- arithmic approach for fit
+    folder -- specify subfolder in measurements folder
+
     Returns:
-    Dataframe with rows; rotor frequency, forse and phase in degrees
+    Dataframe with rows; rotor frequency, force and phase in degrees
     '''
     import pandas as pd
+    if folder:
+        folder = Path(root_folder, folder)
+    else:
+        folder = root_folder
+
+    files = [f for f in os.listdir(folder) if f.endswith('.p')]
+
     df = None
-    for f in range(10, 21):
-        for i in range(0, 10):
-            filename = join(folder, str(f)+str(i)+'.p')
-            dct = pickle.load(open(filename, 'rb'))
-            # first 0.1 second selected
-            # quickly dampens out so only holds for first 0.1 second
-            # dct['ac_meas'] = dct['ac_meas'][50:150]
-            # dct['ir_meas'] = dct['ir_meas'][50:150]
-            results = pd.DataFrame(calc.getdetails(dct,
-                                                   flt=flt,
-                                                   verbose=verbose,
-                                                   arithmic=arithmic),
-                                   index=[0])
-            df = results if df is None else pd.concat([df, results])
+    for f in files:
+        # filename = join(folder, str(f)+str(i)+'.p')
+        dct = pickle.load(open(Path(folder, f), 'rb'))
+        # first 0.1 second selected
+        # quickly dampens out so only holds for first 0.1 second
+        # dct['ac_meas'] = dct['ac_meas'][50:150]
+        # dct['ir_meas'] = dct['ir_meas'][50:150]
+        results = pd.DataFrame(calc.getdetails(dct,
+                                               flt=flt,
+                                               verbose=verbose,
+                                               arithmic=arithmic),
+                               index=[0])
+        df = results if df is None else pd.concat([df, results])
     return df
 
 

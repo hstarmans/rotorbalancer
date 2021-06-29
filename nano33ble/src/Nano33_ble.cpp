@@ -9,7 +9,7 @@
 #include <Wire.h>
 #include <SPI.h>
 // modified fork
-#include <SparkFunLSM9DS1.h> 
+#include <SparkFunLSM9DS1.h>
 #include "nrf.h"
 
 // rotor pulsed via pin A3, i.e. pin 0.29 on microcontroller
@@ -131,9 +131,6 @@ void loop() {
         // execute measurements
         iteration = 0;
         int digitalout = 1;
-        // having the motor on while measuring
-        // can interfere with measurements
-        motoron(false);
         while(iteration<samples){
           if(digitalRead(irsensorDPin) == 0) digitalout = 0;
           if (imu.accelAvailable()){
@@ -145,6 +142,8 @@ void loop() {
             ++iteration;
           }
         }
+        // motor turned off after measurements
+        motoron(false);
         Serial.print("Pulse frequency ");
         Serial.print(frequency);
         Serial.println(" Hz.");

@@ -1,9 +1,6 @@
 import pickle
 from os.path import join
 
-import pandas as pd
-import matplotlib.pyplot as plt
-
 import main
 import calc
 
@@ -12,9 +9,9 @@ folder = 'measurements'
 
 def runtest():
     '''run main.main function over range of frequencies and multiple times'''
-    for f in range(10,21):
+    for f in range(11, 101, 10):
         print("measuring {}".format(f))
-        for i in range(0,10):
+        for i in range(0, 1):
             print("cycle {}".format(i))
             res = main.main(frequency=f)
             filename = join(folder, str(f)+str(i)+'.p')
@@ -28,6 +25,7 @@ def loadfiles(flt, verbose, arithmic):
     Returns:
     Dataframe with rows; rotor frequency, forse and phase in degrees
     '''
+    import pandas as pd
     df = None
     for f in range(10,21):
         for i in range(0,10):
@@ -43,6 +41,7 @@ def loadfiles(flt, verbose, arithmic):
 
 def plotfiles(df):
     '''plot dataframe from load files'''
+    import matplotlib.pyplot as plt
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12,8))
     fig.canvas.set_window_title("Degree and force plotted vs rotor frequency")
     # plot two columns with respect to each other

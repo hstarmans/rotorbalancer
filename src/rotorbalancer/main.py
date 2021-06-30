@@ -51,8 +51,10 @@ def test_received(text):
     return received
 
 
-def getports(name='Nano 33 BLE'):
+def getports(name='COM5'):  # Nano 33 BLE on raspberry
     '''get serial port for the NANO 33 BLE
+
+    name -- specifier of device.. can differ for e.g. be COM5 or Nano 33 BLE
 
     Returns:
     List with ports which have a Nano 33 BLE attached

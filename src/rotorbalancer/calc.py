@@ -3,14 +3,16 @@ import pickle
 from os.path import dirname
 from pathlib import Path
 import scipy.fftpack
-from scipy.signal import correlate, butter, lfilter
+from scipy.signal import correlate, butter, lfilter, find_peaks
 from scipy.optimize import curve_fit
 
+import matplotlib.pyplot as plt
 
 import numpy as np
 
 root_folder = Path(dirname(dirname(dirname(__file__))),
                    'measurements')
+
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
     '''butter bandpass
@@ -55,18 +57,72 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     return y
 
 
-def read_file(folder, fname):
-    '''reads file from folder with filename
+def read_file(fname):
+    '''reads file from root folder with filename
 
     Keyword arguments:
         folder -- name of folder
         fname -- name of file
     '''
-    if folder:
-        folder = Path(root_folder, folder)
-    else:
-        folder = root_folder
-    return pickle.load(open(Path(folder, fname), 'rb'))
+    dct = pickle.load(open(Path(root_folder, fname), 'rb'))
+    # mean centering
+    dct['ac_meas'] = dct['ac_meas']-np.mean(dct['ac_meas'])
+    dct['ir_meas'] = dct['ir_meas']-np.mean(dct['ir_meas'])
+    return dct
+
+
+def fourier_transform(data):
+    T = 1/data['sample_freq']
+    N = len(data['ir_meas'])
+    xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
+    yf_ir = scipy.fftpack.fft(data['ir_meas'])
+    yf_ac = scipy.fftpack.fft(data['ac_meas'])
+    A_ir = 2.0/N*np.abs(yf_ir[:N//2])
+    A_ac = 2.0/N*np.abs(yf_ac[:N//2])
+    return xf, A_ir, A_ac
+
+
+def rotfreq_and_force(data, verbose=False):
+    'retrieves estimated rotation frequency and force'
+    xf, A_ir, A_ac = fourier_transform(data)
+    # in the spectrum overtones are visible
+    # the first is selected
+
+    def get_first_peak(sign):
+        peaks, _ = find_peaks(sign, height=sign[1:].max()/2)
+        if len(peaks) > 0:
+            if verbose:
+                print(peaks)
+            return peaks[0]
+        else:
+            return -1
+    results = {}
+    results['freq_ir'] = get_first_peak(A_ir)
+    results['freq_ac'] = get_first_peak(A_ac)
+    freq = results['freq_ir']
+    # detects peak in acceleration on basis of IR
+    # peaks do not occur at exactly the same frequency
+    # therefore they are collected within a range
+    high_idx = round(xf[np.abs(xf-freq-10).argmin()])
+    low_idx = round(xf[np.abs(xf-freq+10).argmin()])
+    results['A'] = A_ac[low_idx: high_idx].max()
+    return results
+
+
+# def plot_amp_range(folder_weight, folder_no_weight):
+#     folder_weight_full = Path(root_folder, folder_weight)
+#     # folder_no_weight = Path(root_folder, folder_no_weight)
+#     # assumes same filenames
+#     files = [f for f in os.listdir(folder_weight_full) if f.endswith('.p')]
+#     freqs = []
+#     amps = []
+#     for f in files:
+#         _, A_weight = amp(read_file(Path(folder_weight, f)))
+#         f, A_no_weight = amp(read_file(Path(folder_no_weight, f)))
+#         amps.append(A_weight-A_no_weight)
+#         freqs.append(f)
+#     print(len(freqs))
+#     plt.plot(freqs, amps)
 
 
 def plotdata(results, saveplot=False):
@@ -84,7 +140,6 @@ def plotdata(results, saveplot=False):
     '''
     # on headless system, a plot cannot be made so library should not
     # be required
-    import matplotlib.pyplot as plt
 
     def plottime(data, ax):
         t = [t*(1/results['sample_freq']) for t in range(len(data))]
@@ -100,9 +155,9 @@ def plotdata(results, saveplot=False):
         ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
         ax.set(xlabel='Frequency (Hz)')
         ax.grid()
-    # mean centering
-    ac_meas = results['ac_meas']-np.mean(results['ac_meas'])
-    ir_meas = results['ir_meas']-np.mean(results['ir_meas'])
+
+    ac_meas = results['ac_meas']
+    ir_meas = results['ir_meas']
     # band pass filter
     # ac_meas = butter_bandpass_filter(ac_meas,
     #  300, 307, results['sample_freq'], order=6)

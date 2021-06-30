@@ -12,8 +12,12 @@
 #include <SparkFunLSM9DS1.h>
 #include "nrf.h"
 
+
 // rotor pulsed via pin A3, i.e. pin 0.29 on microcontroller
 #define PWM_PIN 29UL
+// not sure about LCK and EN pin, they should be kept fixed!
+#define LCK_PIN A2
+#define EN_PIN A1
 #define irsensorAPin A6
 #define irsensorDPin 2
 
@@ -38,6 +42,8 @@ int16_t accel_data[samples];
 uint16_t buf[1]; 
 
 void motoron(bool on){
+  digitalWrite(EN_PIN, on);
+  digitalWrite(LCK_PIN, on);
   NRF_PWM0->ENABLE = (int) on;
   NRF_PWM0->TASKS_SEQSTART[0] = (int) on;
 }
@@ -76,8 +82,10 @@ void setuppolygon(int frequency) {
 
 void setup() {
   setuppolygon(frequency);
-  pinMode(A3, INPUT); 
-  pinMode(irsensorDPin, INPUT); 
+  pinMode(A3, INPUT);
+  pinMode(LCK_PIN, OUTPUT);
+  pinMode(EN_PIN, OUTPUT);
+  pinMode(irsensorDPin, INPUT);
   pinMode(irsensorAPin, INPUT);
   Serial.begin(115200);
   while (!Serial);

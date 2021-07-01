@@ -70,9 +70,9 @@ Mirror motor:
 Panasonic AN44000A, other moters require different pins to be pulsed.
 Mirror motors have 5 pins; PWM, MOTOR_EN, GND, Voltage and LCK_PIN.
 PWM is speed control. Relation is not linear for all motors. GND is ground. Voltage is the supply voltage, ideally 24V. LCK_pin is
-false if encoder and signal are not in sync.
-I cannot confirm the function of LCK_pin and MOTOR_EN. 
-They should not not be floating as the frequency is unstable in these case.
+false if encoder and signal are not in sync. I cannot confirm the function of LCK_pin and MOTOR_EN. 
+Changing them or looking at their input does not reveal any activity.
+They are fixed for now to guarantee repeatability.
 
 
   
@@ -82,7 +82,7 @@ IR sensor:
 The TCRT5000 IR LED sensor see [DIY LP turntable](https://www.stockholmviews.com/wp/diy-lp-turntable-tachometer/). I bought one [here](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module)  
 Balancing putty:  
 In the industry two systems are used. A 2 component epoxy resin putty by [Weicon](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty)
-A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de).
+A single component UV curable expory resin system, e.g. by [Shenk](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf). In german it is called Wuchtkitt. The compound has a ceramic filling and the density is 2 gram per cubic centimer. Component was ordered via [modular](https://www.modulor.de). The kitt becomes green upon mixing. After several hours it becomes very hard and can no longer be removed from prism.  
 An alternative is to use lead or metal tape. Lead has a density of 11 gram per cubic centimer.  
 Optical plate:  
 Used an optical aluminum breadboard from Thorlabs with M6 screws as base. Do not attach the device to something heavy this make the measurements worse. Typically, you want it decoupled from the external world and place the object under study on foam or hang it on cords. During measurements, the prism was suspended in air with strings.

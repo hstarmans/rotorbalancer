@@ -91,7 +91,7 @@ def set_frequency(frequency):
     Keyword arguments:
     frequency -- frequency of the oscillitor in Hz
     '''
-    if frequency < 10:
+    if frequency < 5:
         raise Exception("Out of range, change clock divider in firmware")
     ser = getserial()
     test_received('Press 5 to set pulse frequency.')
@@ -159,10 +159,7 @@ def main(frequency=20, plot=False, upload=False):
                'sample_freq': sample_frequency}
     test_received('Measurement completed')
     sleep(1)
-    try:
-        calc.getdetails(results, flt=False, verbose=True, arithmic=True)
-    except ValueError:
-        print("IR seems not properly triggered and overexposed.")
+    print(calc.rotfreq_and_force(results))
     if plot:
         calc.plotdata(results)
     return results

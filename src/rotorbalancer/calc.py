@@ -85,27 +85,24 @@ def fourier_transform(data):
 def rotfreq_and_force(data, verbose=False):
     'retrieves estimated rotation frequency and force'
     xf, A_ir, A_ac = fourier_transform(data)
-    # in the spectrum overtones are visible
-    # the first is selected
 
     def get_first_peak(sign):
-        peaks, _ = find_peaks(sign, height=sign[1:].max()/2)
+        'selects basetone and ignores overtones'
+        peaks, _ = find_peaks(sign,
+                              height=sign[1:data['puls_freq']*10].max()/2)
         if len(peaks) > 0:
             if verbose:
                 print(peaks)
-            return peaks[0]
+            return peaks[0]+1, sign[peaks[0]]
         else:
-            return -1
+            return -1, -1
     results = {}
-    results['freq_ir'] = get_first_peak(A_ir)
-    results['freq_ac'] = get_first_peak(A_ac)
-    freq = results['freq_ir']
-    # detects peak in acceleration on basis of IR
-    # peaks do not occur at exactly the same frequency
-    # therefore they are collected within a range
-    high_idx = round(xf[np.abs(xf-freq-10).argmin()])
-    low_idx = round(xf[np.abs(xf-freq+10).argmin()])
-    results['A'] = A_ac[low_idx: high_idx].max()
+    results['freq_ir'], results['A_ir'] = get_first_peak(A_ir)
+    results['freq_ac'], results['A_ac'] = get_first_peak(A_ac)
+    results['phase'] = crosscorrelate(data,
+                                      20,
+                                      80,
+                                      results['freq_ir'], debug=False)
     return results
 
 
@@ -365,7 +362,9 @@ def crosscorrelate(results, low, high, rotor, debug=False):
     # force the phase shift to be in [-pi:pi]
     recovered_phase_shift = (
         2*np.pi*(((0.5 + recovered_time_shift/(1/freq) % 1.0) - 0.5)))
-    print("Recovered time shift {}".format(recovered_time_shift))
-    print("Recovered phase shift {} radian".format(recovered_phase_shift))
-    print("Recovered phase shift {} degrees"
-          .format(np.degrees(recovered_phase_shift)))
+    if debug:
+        print("Recovered time shift {}".format(recovered_time_shift))
+        print("Recovered phase shift {} radian".format(recovered_phase_shift))
+        print("Recovered phase shift {} degrees"
+              .format(np.degrees(recovered_phase_shift)))
+    return np.degrees(recovered_phase_shift)

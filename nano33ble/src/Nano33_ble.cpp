@@ -50,10 +50,10 @@ void motoron(bool on){
 
 
 void setuppolygon(int frequency) {
-  const int counterclock = 250000; 
+  const int counterclock = 125000;
   // counter top must be between 3..32767
   const uint16_t countertop = counterclock/frequency;
-  const uint16_t dutycycle = countertop/2; 
+  const uint16_t dutycycle = countertop/2;
   buf[0] = {dutycycle};
   // sets up hardware pwm
   //  source https://github.com/andenore/NordicSnippets/blob/master/examples/pwm/main.c
@@ -64,7 +64,7 @@ void setuppolygon(int frequency) {
   // Configure PWM_PIN as output, and set it to 0
   NRF_GPIO->DIRSET = (1 << PWM_PIN);
   NRF_GPIO->OUTCLR = (1 << PWM_PIN);
-  NRF_PWM0->PRESCALER   = PWM_PRESCALER_PRESCALER_DIV_64; // 250kHz clock, see manual
+  NRF_PWM0->PRESCALER   = PWM_PRESCALER_PRESCALER_DIV_128; // 125kHz clock, see manual
   NRF_PWM0->PSEL.OUT[0] = PWM_PIN;
   NRF_PWM0->MODE        = (PWM_MODE_UPDOWN_Up << PWM_MODE_UPDOWN_Pos);
   NRF_PWM0->DECODER     = (PWM_DECODER_LOAD_Common       << PWM_DECODER_LOAD_Pos) | 
@@ -214,12 +214,12 @@ void loop() {
           Serial.setTimeout(1000);
           frequency = Serial.parseInt();
           Serial.println("Set pulse frequency in Hz.");
-          if (frequency>9){
+          if (frequency>4){
             Serial.println("Accepted.");
             setuppolygon(frequency);
             break;
           }
-          else if(0<frequency && frequency<9){
+          else if(0<frequency && frequency<4){
             Serial.println("Invalid, countertop will overflow.");
           }
           // ignore 0, default return value of parseInt

@@ -23,8 +23,11 @@ def runtest(starthz, endhz, stephz, foldername, repeat=1):
         print(f"measuring {f} Hz")
         for i in range(0, repeat):
             print(f"Cycle {i}")
+            folder_name = Path(root_folder, foldername)
+            if not os.path.exists(folder_name):
+                os.makedirs(folder_name)
             res = main.main(frequency=f)
-            filename = Path(root_folder, foldername, str(f)+str(i)+'.p')
+            filename = Path(folder_name, str(f)+str(i)+'.p')
             pickle.dump(res, open(filename, 'wb'))
 
 

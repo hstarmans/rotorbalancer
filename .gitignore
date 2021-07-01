@@ -2,7 +2,6 @@
 # Format documentation: http://kicad-pcb.org/help/file-formats/
 config.*
 .vscode*
-*.p
 
 # Temporary files
 *.lock*  # libre office temp files

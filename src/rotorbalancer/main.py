@@ -1,163 +1,116 @@
 # Author: Rik Starmans
-# Date: 18-3-2020
-# Description: program to upload arduino code and plot results
-from subprocess import run
-from time import sleep
-import serial
-import serial.tools.list_ports
+# Description: upload Arduino Nano 33 BLE firmware and collect/plot vibration measurements
 import argparse
 import pickle
+from subprocess import run
+from time import sleep
+
+import serial
+import serial.tools.list_ports
 
 from . import calc
 
-# Placer holder for the Pyserial connection to the Nano33ble
-# set by getserial
+# Placeholder for the PySerial connection to the Nano 33 BLE (set by getserial)
 SER = None
 
 
-def upload(filename='Nano33_ble/Nano33_ble.ino'):
-    '''upload firmware to the board via the arduino commmand line interface
-
-    Documentation details of arduino command line can be found at
-    https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc
-    Program can also be configured by running the IDE.
-
-    Keyword arguments:
-    filename -- location of file to upload
-    '''
-    cmd = ['arduino', '--upload', '--port', getports()[0], filename]
+def upload_firmware(filename="nano33ble/src/Nano33_ble.cpp", port=None):
+    """Upload firmware to the Arduino Nano 33 BLE via Arduino CLI."""
+    target_port = port if port is not None else getports()[0]
+    cmd = ["arduino", "--upload", "--port", target_port, filename]
     arduino = run(cmd)
     if arduino.returncode:
-        raise Exception("Exit code not zero, operation failed")
+        raise RuntimeError(f"Arduino upload exited with code {arduino.returncode}")
     sleep(3)  # wait for board to boot
 
 
+upload = upload_firmware
+
+
 def test_received(text):
-    '''check of text is received on serial port
-
-    Keyword arguments:
-    text -- text as string expected to be received on serial line
-
-    Returns:
-    The full line of text this keyword was in as string
-    '''
-    received, iteration = '', 0
+    """Read lines from serial until ``text`` is observed and return that full line."""
+    received, iteration = "", 0
     ser = getserial()
     while text not in received:
-        received, iteration = ser.readline().decode().strip(), iteration+1
+        received = ser.readline().decode().strip()
+        iteration += 1
         if iteration > 15:
-            print("Received {}".format(received))
-            raise Exception('Did not receive text; "{}"'.format(text))
+            print(f"Received {received}")
+            raise TimeoutError(f'Did not receive text: "{text}"')
     return received
 
 
-def getports(name='COM5'):  # Nano 33 BLE on raspberry
-    '''get serial port for the NANO 33 BLE
-
-    name -- specifier of device.. can differ for e.g. be COM5 or Nano 33 BLE
-
-    Returns:
-    List with ports which have a Nano 33 BLE attached
-    '''
-    arduino_ports = [p.device for p in serial.tools.list_ports.comports()
-                     if name in p.description]
-    if not len(arduino_ports):
-        raise Exception("Arduino Nano 33 BLE not detected")
+def getports(name="COM5"):
+    """Return serial ports whose description matches ``name``."""
+    arduino_ports = [
+        p.device for p in serial.tools.list_ports.comports() if name in p.description
+    ]
+    if not arduino_ports:
+        raise RuntimeError("Arduino Nano 33 BLE not detected")
     return arduino_ports
 
 
-def getserial():
-    '''get serial object for the NANO 33 BLE
-
-    The result is also set as global as a serial object.
-    Closing and opening the port too many
-    times can break connection with the board.
-    This prevents it from being opened to many times.
-
-    Returns
-    pyserial object
-    '''
+def getserial(port=None):
+    """Return a cached PySerial connection to the Nano 33 BLE."""
     global SER
-    if not SER:
-        SER = serial.Serial(getports()[0], 115200, timeout=1)
+    if SER is None:
+        target_port = port if port is not None else getports()[0]
+        SER = serial.Serial(target_port, 115200, timeout=1)
     return SER
 
 
 def set_frequency(frequency):
-    '''set the hardware pwm frequency of the Nano 33BLE
-
-    The frequency of the oscillator is use to move the motor.
-
-    Keyword arguments:
-    frequency -- frequency of the oscillitor in Hz
-    '''
+    """Set the hardware PWM pulse frequency of the Nano 33 BLE in Hz."""
     if frequency < 5:
-        raise Exception("Out of range, change clock divider in firmware")
+        raise ValueError("Frequency out of range (< 5 Hz); change clock divider in firmware")
     ser = getserial()
-    test_received('Press 5 to set pulse frequency.')
-    ser.write('5'.encode())
-    test_received('Set pulse frequency')
+    test_received("Press 5 to set pulse frequency.")
+    ser.write(b"5")
+    test_received("Set pulse frequency")
     ser.write(str(frequency).encode())
-    test_received('Accepted.')
+    test_received("Accepted.")
 
 
-def main(frequency=20, plot=False, upload=False):
-    """collects samples from the client
-
-    Keyword arguments:
-    upload -- if true firmware is recompiled and uploaded to the board
-    plot -- if true acceleromater an infrared signal are plotted vs time
-            the amplitude of their Fourier transform is also shown
-    frequency -- frequency used of the oscillator in Hertz
-
-    Returns:
-    Python dictionary with keys;
-        ac_meas -- accelerometer measurements as list
-        ir_meas -- infrared measurements as list
-        purse_freq -- the frequency at which the rotor was driven
-        sample frequency -- sample frequency of the signal typically 952 Hz
-    """
-    ser = getserial()
-    # read all lines to clear buffer
-    ser.readlines()
-    print("Setting frequency to {} Hz".format(frequency))
-    set_frequency(frequency)
+def main(frequency=20, plot=False, upload=False, port=None):
+    """Collect accelerometer and IR tachometer samples from the Nano 33 BLE."""
     if upload:
-        upload()
-    test_received('Press 1 to start samples.')
-    ser.write('1'.encode())
-    received = test_received('Process time')
-    measurement_time = float(received.split(' ')[2])
-    print("Waiting {} seconds for operation" +
-          " to complete".format(measurement_time))
-    slept = 0
-    sleep_step = 5  # seconds
+        upload_firmware(port=port)
+    ser = getserial(port=port)
+    ser.readlines()
+    print(f"Setting frequency to {frequency} Hz")
+    set_frequency(frequency)
+    test_received("Press 1 to start samples.")
+    ser.write(b"1")
+    received = test_received("Process time")
+    measurement_time = float(received.split(" ")[2])
+    print(f"Waiting {measurement_time} seconds for operation to complete")
+    slept = 0.0
+    sleep_step = 5.0
     while slept < measurement_time:
-        slept += sleep_step
-        if slept > measurement_time:
-            sleep(measurement_time-slept+sleep_step)
-            slept = measurement_time
-        else:
-            sleep(sleep_step)
-        print(" Completed {:.2f} %".format(slept/measurement_time*100))
-    received = test_received('Pulse frequency')
-    rotor_frequency = int(received.split(' ')[2])
-    print("Pulse frequency {} Hz".format(rotor_frequency))
-    received = test_received('Sample frequency')
-    sample_frequency = int(received.split(' ')[2])
-    print("Sample frequency {} Hz".format(sample_frequency))
-    received = test_received('Samples collected')
-    samples = int(received.split(' ')[2])
-    print("Samples collected {}".format(samples))
+        step = min(sleep_step, measurement_time - slept)
+        sleep(step)
+        slept += step
+        print(f" Completed {slept / measurement_time * 100:.2f} %")
+    received = test_received("Pulse frequency")
+    rotor_frequency = int(received.split(" ")[2])
+    print(f"Pulse frequency {rotor_frequency} Hz")
+    received = test_received("Sample frequency")
+    sample_frequency = int(received.split(" ")[2])
+    print(f"Sample frequency {sample_frequency} Hz")
+    received = test_received("Samples collected")
+    samples = int(received.split(" ")[2])
+    print(f"Samples collected {samples}")
     ac_meas, ir_meas = [], []
-    for sample in range(samples*2):  # you receive accelerometer and ir
+    for sample in range(samples * 2):  # interleaved IR and accelerometer samples
         res = int(ser.readline().decode().strip())
         ac_meas.append(res) if sample % 2 else ir_meas.append(res)
-    results = {'ac_meas': ac_meas,
-               'ir_meas': ir_meas,
-               'puls_freq': rotor_frequency,
-               'sample_freq': sample_frequency}
-    test_received('Measurement completed')
+    results = {
+        "ac_meas": ac_meas,
+        "ir_meas": ir_meas,
+        "puls_freq": rotor_frequency,
+        "sample_freq": sample_frequency,
+    }
+    test_received("Measurement completed")
     sleep(1)
     print(calc.rotfreq_and_force(results))
     if plot:
@@ -166,35 +119,58 @@ def main(frequency=20, plot=False, upload=False):
 
 
 def parser():
-    '''creates parser for the command line interface of this script
+    """Build the command-line argument parser."""
+    arg_parser = argparse.ArgumentParser(add_help=True)
+    arg_parser.add_argument(
+        "--plot",
+        action="store_true",
+        default=False,
+        help="Plot results",
+    )
+    arg_parser.add_argument(
+        "--upload",
+        action="store_true",
+        default=False,
+        help="Upload firmware",
+    )
+    arg_parser.add_argument(
+        "--frequency",
+        action="store",
+        default=20,
+        type=int,
+        help="Set pulse frequency in Hz",
+    )
+    arg_parser.add_argument(
+        "--port",
+        action="store",
+        default=None,
+        type=str,
+        help="Optional serial port path (e.g. /dev/ttyACM0 or COM5)",
+    )
+    arg_parser.add_argument(
+        "--filename",
+        action="store",
+        default=None,
+        type=str,
+        help="Filename to store pickled measurement results",
+    )
+    return arg_parser
 
-    Returns:
-    Argument parses
-    '''
-    parser = argparse.ArgumentParser(add_help=True)
-    parser.add_argument('--plot',
-                        action="store_true",
-                        default=False, help='Plot results')
-    parser.add_argument('--upload',
-                        action="store_true",
-                        default=False, help='Upload firmware')
-    parser.add_argument('--frequency',
-                        action="store",
-                        default=20,
-                        type=int,
-                        help='Set frequency in Hz')
-    parser.add_argument('--filename',
-                        action="store",
-                        default=None,
-                        type=str,
-                        help='Filename to store results with pickle.')
-    return parser
+
+def cli(argv=None):
+    """CLI entry point for collecting measurements."""
+    args = parser().parse_args(argv)
+    results = main(
+        frequency=args.frequency,
+        plot=args.plot,
+        upload=args.upload,
+        port=args.port,
+    )
+    if args.filename:
+        with open(args.filename, "wb") as f:
+            pickle.dump(results, f)
+    return results
 
 
 if __name__ == "__main__":
-    parser = parser()
-    args = parser.parse_args()
-    results = main(args.frequency, args.plot, args.upload)
-    if args.filename:
-        pickle.dump(results,
-                    open(args.filename, 'wb'))
+    cli()

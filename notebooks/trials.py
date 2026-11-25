@@ -30,7 +30,7 @@ from rotorbalancer import tools
 tools.loadfiles('without_weight').describe()
 
 # Adding a balance weight, reduces the amplitude.  
-# The amplitude is not always detected correcly from the accelerometer plot.  
+# The amplitude is not always detected correctly from the accelerometer plot.  
 # This can be seen at the large standard deviation from the frequency plot.
 
 from rotorbalancer import tools

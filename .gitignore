@@ -1,10 +1,25 @@
+# Python & packaging artifacts
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Notebooks & plots
+*.ipynb
+*checkpoint*
+results.png
+
 # For PCBs designed using KiCad: http://www.kicad-pcb.org/
-# Format documentation: http://kicad-pcb.org/help/file-formats/
 config.*
 .vscode*
 
 # Temporary files
-*.lock*  # libre office temp files
+*.lock*
 *.000
 *.bak
 *.bck
@@ -17,16 +32,8 @@ _autosave-*
 *-save.pro
 *-save.kicad_pcb
 
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.egg
-*.ipynb
-*.egg-info
-*checkpoint*
-# Netlist files (exported from Eeschema)
+# KiCad / Autorouter / BOM exports
 *.net
-
-# Autorouter files (exported from Pcbnew)
 *.dsn
 *.ses
 *.gb*
@@ -34,13 +41,8 @@ __pycache__/
 *.gm*
 *.rar
 *.drl
-
-# BOM Files / Notes in Libre office
-
-# Exported BOM files
 *.xml
 *.csv
 
-# Freecad temps
+# FreeCAD temps
 .FCStd1
-

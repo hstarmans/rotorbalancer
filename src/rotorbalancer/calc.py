@@ -1,370 +1,279 @@
 import pickle
-
-from os.path import dirname
 from pathlib import Path
-import scipy.fftpack
-from scipy.signal import correlate, butter, lfilter, find_peaks
-from scipy.optimize import curve_fit
 
 import matplotlib.pyplot as plt
-
 import numpy as np
+from scipy.fft import rfft, rfftfreq
+from scipy.optimize import curve_fit
+from scipy.signal import butter, correlate, find_peaks, lfilter
 
-root_folder = Path(dirname(dirname(dirname(__file__))),
-                   'measurements')
+root_folder = Path(__file__).resolve().parents[2] / "measurements"
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
-    '''butter bandpass
+    """Build a Butterworth bandpass filter numerator/denominator pair.
 
-    Code copied from
-    https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
-
-    Keyword arguments:
-    order -- order of the butter filter
-    lowcut -- low frequency cut in Hz
-    highcut -- high frequency cut in Hz
-    fs -- frequency in Hz at which samples were taken
-
-    Returns
-    Scipy.signal butter filter
-    '''
+    Based on https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
+    """
     nyq = 0.5 * fs
     low = lowcut / nyq
     high = highcut / nyq
-    b, a = butter(order, [low, high], btype='band')
+    b, a = butter(order, [low, high], btype="band")
     return b, a
 
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-    '''butter bandpass filter
-
-    Code copied from
-    https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
-
-    Keyword arguments:
-    data -- data to be filtered
-    lowcut -- low frequency cut in Hz
-    highcut -- high frequency cut in Hz
-    fs -- frequency in Hz at which samples were taken
-    order -- order of the butter filter
-
-    Returns
-    filtered signal
-    '''
+    """Apply a Butterworth bandpass filter to ``data``."""
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
-    y = lfilter(b, a, data)
-    return y
+    return lfilter(b, a, data)
 
 
 def read_file(fname):
-    '''reads file from root folder with filename
+    """Load a pickled measurement dict and mean-center ``ac_meas`` and ``ir_meas``."""
+    candidate = Path(fname)
+    if not candidate.is_file():
+        candidate = root_folder / fname
+    with open(candidate, "rb") as f:
+        dct = pickle.load(f)
 
-    Keyword arguments:
-        folder -- name of folder
-        fname -- name of file
-    '''
-    dct = pickle.load(open(Path(root_folder, fname), 'rb'))
-    # mean centering
-    dct['ac_meas'] = dct['ac_meas']-np.mean(dct['ac_meas'])
-    dct['ir_meas'] = dct['ir_meas']-np.mean(dct['ir_meas'])
-    return dct
+    result = dict(dct)
+    ac = np.asarray(dct["ac_meas"], dtype=float)
+    ir = np.asarray(dct["ir_meas"], dtype=float)
+    result["ac_meas"] = ac - np.mean(ac)
+    result["ir_meas"] = ir - np.mean(ir)
+    return result
 
 
 def fourier_transform(data):
-    T = 1/data['sample_freq']
-    N = len(data['ir_meas'])
-    xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
-    yf_ir = scipy.fftpack.fft(data['ir_meas'])
-    yf_ac = scipy.fftpack.fft(data['ac_meas'])
-    A_ir = 2.0/N*np.abs(yf_ir[:N//2])
-    A_ac = 2.0/N*np.abs(yf_ac[:N//2])
-    return xf, A_ir, A_ac
+    """Return frequency bins [Hz] and single-sided FFT amplitudes for IR and AC."""
+    sample_freq = float(data["sample_freq"])
+    ir = np.asarray(data["ir_meas"], dtype=float)
+    ac = np.asarray(data["ac_meas"], dtype=float)
+    ir = ir - np.mean(ir)
+    ac = ac - np.mean(ac)
+
+    n = len(ir)
+    xf = rfftfreq(n, d=1.0 / sample_freq)
+    a_ir = (2.0 / n) * np.abs(rfft(ir))
+    a_ac = (2.0 / n) * np.abs(rfft(ac))
+    return xf, a_ir, a_ac
 
 
 def rotfreq_and_force(data, verbose=False):
-    'retrieves estimated rotation frequency and force'
-    xf, A_ir, A_ac = fourier_transform(data)
+    """Estimate fundamental rotation frequency [Hz], FFT amplitudes, and phase [deg]."""
+    xf, a_ir, a_ac = fourier_transform(data)
+    fs = float(data["sample_freq"])
+    max_search_freq = float(data["puls_freq"]) * 10.0
+    band_mask = (xf > 0.0) & (xf <= max_search_freq)
+    if not np.any(band_mask):
+        band_mask = xf > 0.0
 
-    def get_first_peak(sign):
-        'selects basetone and ignores overtones'
-        peaks, _ = find_peaks(sign,
-                              height=sign[1:data['puls_freq']*10].max()/2)
-        if len(peaks) > 0:
-            if verbose:
-                print(peaks)
-            return peaks[0]+1, sign[peaks[0]]
-        else:
-            return -1, -1
+    def get_first_peak(spectrum):
+        band_max = float(np.max(spectrum[band_mask])) if np.any(band_mask) else 0.0
+        if band_max <= 0.0:
+            return -1.0, -1.0
+        peaks, _ = find_peaks(spectrum, height=band_max / 2.0)
+        peaks = [int(p) for p in peaks if xf[p] > 0.0]
+        if not peaks:
+            return -1.0, -1.0
+        if verbose:
+            print(peaks)
+        idx = peaks[0]
+        return float(xf[idx]), float(spectrum[idx])
+
     results = {}
-    results['freq_ir'], results['A_ir'] = get_first_peak(A_ir)
-    results['freq_ac'], results['A_ac'] = get_first_peak(A_ac)
-    results['phase'] = crosscorrelate(data,
-                                      20,
-                                      80,
-                                      results['freq_ir'], debug=False)
+    results["freq_ir"], results["A_ir"] = get_first_peak(a_ir)
+    results["freq_ac"], results["A_ac"] = get_first_peak(a_ac)
+
+    freq_ir = results["freq_ir"]
+    if freq_ir <= 0.0:
+        results["phase"] = float("nan")
+    else:
+        low = 20.0 if freq_ir > 20.0 else min(10.0, 0.5 * freq_ir)
+        high = 80.0 if freq_ir < 80.0 else min(0.45 * fs, max(80.0, 1.5 * freq_ir))
+        if low <= 0.0 or low >= freq_ir or high <= freq_ir or high >= 0.5 * fs:
+            results["phase"] = float("nan")
+        else:
+            results["phase"] = crosscorrelate(data, low, high, freq_ir, debug=False)
     return results
 
 
-# def plot_amp_range(folder_weight, folder_no_weight):
-#     folder_weight_full = Path(root_folder, folder_weight)
-#     # folder_no_weight = Path(root_folder, folder_no_weight)
-#     # assumes same filenames
-#     files = [f for f in os.listdir(folder_weight_full) if f.endswith('.p')]
-#     freqs = []
-#     amps = []
-#     for f in files:
-#         _, A_weight = amp(read_file(Path(folder_weight, f)))
-#         f, A_no_weight = amp(read_file(Path(folder_no_weight, f)))
-#         amps.append(A_weight-A_no_weight)
-#         freqs.append(f)
-#     print(len(freqs))
-#     plt.plot(freqs, amps)
+def plotdata(results, saveplot=False, show=True):
+    """Plot time series and amplitude spectra for accelerometer and IR signals."""
+    sample_freq = float(results["sample_freq"])
+    ac_meas = np.asarray(results["ac_meas"], dtype=float)
+    ir_meas = np.asarray(results["ir_meas"], dtype=float)
+    xf, a_ir, a_ac = fourier_transform(results)
+    time_axis = np.arange(len(ac_meas), dtype=float) / sample_freq
 
-
-def plotdata(results, saveplot=False):
-    '''plots frequency, time from results collected
-
-    Four plots are made;
-        time plot of accelerometer signal,
-        amplitude spectrum of accelerometer signal
-        time plot of infrared signal,
-        amplitude specturm of infrared signal.
-
-    Keyword arguments:
-    results -- dictionary resulting from the main.main function
-    saveplot -- wether the plot has to be saved to disk
-    '''
-    # on headless system, a plot cannot be made so library should not
-    # be required
-
-    def plottime(data, ax):
-        t = [t*(1/results['sample_freq']) for t in range(len(data))]
-        ax.plot(t, data)
-        ax.grid()
-        ax.set_xlabel('Time')
-
-    def plotfrequency(data, ax):
-        T = 1/results['sample_freq']
-        N = len(data)
-        xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
-        yf = scipy.fftpack.fft(data)
-        ax.plot(xf, 2.0/N*np.abs(yf[:N//2]))
-        ax.set(xlabel='Frequency (Hz)')
-        ax.grid()
-
-    ac_meas = results['ac_meas']
-    ir_meas = results['ir_meas']
-    # band pass filter
-    # ac_meas = butter_bandpass_filter(ac_meas,
-    #  300, 307, results['sample_freq'], order=6)
-    # ir_meas = butter_bandpass_filter(ir_meas,
-    # 300, 307, results['sample_freq'], order=6)
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
-    fig.canvas.set_window_title("Frequency and time plots")
-    plottime(ac_meas, axes[0, 0])
-    axes[0, 0].title.set_text('Acceleration vs time')
-    plotfrequency(ac_meas, axes[0, 1])
-    axes[0, 1].title.set_text('Acceleration spectrum')
-    # axes[0,1].set_ylabel('ticks (1000 ticks is g')
-    plottime(ir_meas, axes[1, 0])
-    axes[1, 0].title.set_text('Infrared voltage vs time')
-    plotfrequency(ir_meas, axes[1, 1])
-    axes[1, 1].title.set_text('Infrared spectrum')
-    plt.tight_layout()
-    plt.show()
+    if fig.canvas.manager is not None:
+        fig.canvas.manager.set_window_title("Frequency and time plots")
+
+    axes[0, 0].plot(time_axis, ac_meas)
+    axes[0, 0].grid()
+    axes[0, 0].set_xlabel("Time (s)")
+    axes[0, 0].set_title("Acceleration vs time")
+
+    axes[0, 1].plot(xf, a_ac)
+    axes[0, 1].grid()
+    axes[0, 1].set_xlabel("Frequency (Hz)")
+    axes[0, 1].set_title("Acceleration spectrum")
+
+    axes[1, 0].plot(time_axis[: len(ir_meas)], ir_meas)
+    axes[1, 0].grid()
+    axes[1, 0].set_xlabel("Time (s)")
+    axes[1, 0].set_title("Infrared voltage vs time")
+
+    axes[1, 1].plot(xf, a_ir)
+    axes[1, 1].grid()
+    axes[1, 1].set_xlabel("Frequency (Hz)")
+    axes[1, 1].set_title("Infrared spectrum")
+
+    fig.tight_layout()
     if saveplot:
-        fig.savefig("results.png")
+        out_path = "results.png" if saveplot is True else str(saveplot)
+        fig.savefig(out_path)
+    if show:
+        plt.show()
+    return fig
 
 
 def fitsinusoid(signal, fest, fs, debug=False):
-    '''fits a sinusoid on top of a signal
-
-    This sinusoidtion tries to exploit all accelerometer measurements.
-    Code was inspired from;
-    https://electronics.stackexchange.com/questions/311098/ways-of-estimating-phase-shift
-
-    Keyword arguments:
-    signal -- signal to fit sinusoid on
-    fest -- estimated frot of the sinusoid
-    fs -- sample frot
-    debug -- create fake signal with debug as phase shift
-
-    Returns:
-    The frot and the phase shift found
-    '''
-    N = len(signal)
-    T = 1/fs
-    x = np.linspace(0.0, N*T, N)
+    """Fit ``A * sin(2 * pi * fest * t + phase)`` and return ``(A, phase_rad)``."""
+    sig = np.asarray(signal, dtype=float)
+    n = len(sig)
+    dt = 1.0 / float(fs)
+    x = np.linspace(0.0, n * dt, n, endpoint=False)
 
     if debug:
         print("debug activated")
-        phasediff = np.pi*debug
-        # phasediff = 0
-        # timeshift = round(debug/T)
-        x = np.linspace(0.0, N*T, N)
-        signal = np.sin(fest*2*np.pi*x+phasediff)
+        phasediff = np.pi * debug
+        sig = np.sin(fest * 2.0 * np.pi * x + phasediff)
 
-    def sinusoid(x, A, phasediff):
-        return A*np.sin(fest*2*np.pi*x+phasediff)
+    peak = float(np.max(np.abs(sig))) if n > 0 else 0.0
+    if peak == 0.0:
+        return 0.0, 0.0
 
-    popt, pcov = curve_fit(sinusoid,
-                           x,
-                           signal,
-                           bounds=([0.8*max(np.abs(signal)), 0],
-                                   [1.2*max(np.abs(signal)), 2*np.pi]))
-    A, phase = *popt,
-    return A, phase
+    def sinusoid(t_arr, amplitude, phasediff):
+        return amplitude * np.sin(fest * 2.0 * np.pi * t_arr + phasediff)
+
+    popt, _ = curve_fit(
+        sinusoid,
+        x,
+        sig,
+        bounds=([0.8 * peak, 0.0], [1.2 * peak, 2.0 * np.pi]),
+    )
+    amplitude, phase = float(popt[0]), float(popt[1])
+    return amplitude, phase
 
 
 def getdetails(measurement, flt=True, verbose=True, arithmic=False):
-    '''estimate rotor rotor frequency, force and putty location from measurements
+    """Estimate rotor frequency [Hz], unbalance force [a.u.], and phase [deg].
 
-    Rotor frot is estimated from the time difference between subsequent
-    rising edges of the infrared signal.
-    Accelerometer phase is estimated from the maximum and minimum position in
-    each cycle. The difference between these two signals should be 180 degrees.
-    Measurments are repeatable but the results will can so far not be linked to
-    the real putty location or weight.
+    Detects rising edges in ``ir_meas`` to segment individual revolutions, optionally
+    bandpass-filters ``ac_meas``, and extracts amplitude and phase via either extrema
+    (``arithmic=True``) or sinusoid fitting (``arithmic=False``).
+    """
+    sample_freq = float(measurement["sample_freq"])
+    ir = np.asarray(measurement["ir_meas"], dtype=float)
+    start_ind = np.flatnonzero((ir[1:] - ir[:-1]) > 0.5) + 1
+    if len(start_ind) < 2:
+        raise ValueError("Need at least two IR rising edges to estimate rotor period")
 
-    Keyword arguments:
-    measurement -- dictionary resulting from the main.main function
-    filter -- if true aplies bandpass butterworth filter
-    verbose -- if true prints information
-    arithmic -- if true use arithmic approach false use function fit
+    cycle_time = np.diff(start_ind)
+    samples_per_period = float(np.mean(cycle_time))
+    min_cycle = float(np.min(cycle_time))
+    max_cycle = float(np.max(cycle_time))
 
-    Returns:
-    Dictionary with keys rotor frequency in hertz, force in arbritrary units
-    and phase in degrees
-    '''
-    results = dict.fromkeys({'frot', 'force', 'deg'})
-    previous = -1
-    start_ind = []
-    cycle_time = []
-    # detect rising edges & store indices
-    for indx, val in enumerate(measurement['ir_meas']):
-        if (previous != -1) & (val-previous == 1):
-            start_ind.append(indx)
-        previous = val
-        # or do np roll and substract
-        if len(start_ind) > 1:
-            cycle_time.append(start_ind[-1]-start_ind[-2])
-    samples_per_period = np.mean(cycle_time)
-    if np.abs(np.max(cycle_time)-np.min(cycle_time)) > 2 and verbose:
-        print("Min freq {:.2f} "
-              .format(measurement['sample_freq']/max(cycle_time)))
-        print("Max freq {:.2f} "
-              .format(measurement['sample_freq']/min(cycle_time)))
+    if abs(max_cycle - min_cycle) > 2.0 and verbose:
+        print(f"Min freq {sample_freq / max_cycle:.2f} ")
+        print(f"Max freq {sample_freq / min_cycle:.2f} ")
         print("WARNING: Rotor frequency seems not constant")
-        # check the signal --> something could be off
-    results['frot'] = measurement['sample_freq'] / samples_per_period
-    # filter improves repeatability of phase shift for different speeds
+
+    results: dict[str, float] = {"frot": sample_freq / samples_per_period}
+
+    raw_ac = np.asarray(measurement["ac_meas"], dtype=float)
     if flt:
-        low = 0.9*measurement['sample_freq']/max(cycle_time)
-        high = 1.1*measurement['sample_freq']/min(cycle_time)
-        ac_meas = list(butter_bandpass_filter(measurement['ac_meas'], low,
-                       high, measurement['sample_freq'], order=6))
+        low = 0.9 * sample_freq / max_cycle
+        high = min(1.1 * sample_freq / min_cycle, 0.49 * sample_freq)
+        ac_meas = butter_bandpass_filter(raw_ac, low, high, sample_freq, order=6)
     else:
-        ac_meas = measurement['ac_meas']
-    pos_max, pos_min = [], []
-    force = []
-    Al, phasel = [], []
-    for index in range(len(start_ind)-1):
-        lst = ac_meas[start_ind[index]:start_ind[index+1]]
+        ac_meas = raw_ac
+
+    pos_max, pos_min, forces = [], [], []
+    amplitudes, phases = [], []
+    for i in range(len(start_ind) - 1):
+        seg = ac_meas[start_ind[i] : start_ind[i + 1]]
+        if len(seg) == 0:
+            continue
         if arithmic:
-            pos_max.append(lst.index(max(lst))/len(lst)*360)
-            pos_min.append(lst.index(min(lst))/len(lst)*360)
-            force.append((max(lst)-min(lst))/2)
+            pos_max.append((int(np.argmax(seg)) / len(seg)) * 360.0)
+            pos_min.append((int(np.argmin(seg)) / len(seg)) * 360.0)
+            forces.append(float(np.max(seg) - np.min(seg)) / 2.0)
         else:
-            frotest = measurement['sample_freq'] / len(lst)
-            A, phase = fitsinusoid(lst, frotest, measurement['sample_freq'])
-            Al.append(A)
-            phasel.append(phase)
+            frotest = sample_freq / len(seg)
+            amplitude, phase = fitsinusoid(seg, frotest, sample_freq)
+            amplitudes.append(amplitude)
+            phases.append(phase)
+
     if arithmic:
-        results['force'] = np.mean(force)
-        max_deg = np.mean(pos_max)
-        min_deg = np.mean(pos_min)
-        if np.abs(np.abs(max_deg-min_deg)-180) > 5 and verbose:
-            print("Max degree {:.2f}".format(max_deg))
-            print("Min degree {:.2f}".format(min_deg))
+        results["force"] = float(np.mean(forces))
+        max_deg = float(np.mean(pos_max))
+        min_deg = float(np.mean(pos_min))
+        if abs(abs(max_deg - min_deg) - 180.0) > 5.0 and verbose:
+            print(f"Max degree {max_deg:.2f}")
+            print(f"Min degree {min_deg:.2f}")
             print("WARNING: Degree measurement seems inaccurate")
-        results['deg'] = min_deg
+        results["deg"] = min_deg
     else:
-        results['force'] = np.mean(Al)
-        results['deg'] = np.mean(phasel)/(2*np.pi)*360
+        results["force"] = float(np.mean(amplitudes))
+        results["deg"] = float(np.mean(phases) / (2.0 * np.pi) * 360.0)
 
     if verbose:
-        print("Rotor frequency is {:.0f} Hz".format(results['frot']))
-        print("Force is {:.2f} a.u.".format(results['force']))
-        print("Phase is {:.2f} degrees".format(results['deg']))
+        print(f"Rotor frequency is {results['frot']:.0f} Hz")
+        print(f"Force is {results['force']:.2f} a.u.")
+        print(f"Phase is {results['deg']:.2f} degrees")
     return results
 
 
 def crosscorrelate(results, low, high, rotor, debug=False):
-    '''obtains the difference in phase between the accelerometer an ir signal
+    """Return phase difference [deg] between accelerometer and IR signals via cross-correlation."""
+    sample_freq = float(results["sample_freq"])
+    ac_meas = np.asarray(results["ac_meas"], dtype=float)
+    ir_meas = np.asarray(results["ir_meas"], dtype=float)
+    freq = float(rotor)
+    n = len(ac_meas)
+    dt_step = 1.0 / sample_freq
 
-    The function has been tested and produces reproducable results.
-    The result is not very accurate.
-    With a sample frequency of 952 Hertz and a rotor frequency of
-    100 Hertz, rouglhy 9.5 measurements are available per period so the outcome
-    in degrees is not accurate
-    Therefore the function get details was developped
-    and this is used as alternative.
-    In the code there is also the option to use a fake signal.
-    Code was copied from;
-    https://stackoverflow.com/questions/6157791/find-phase-difference-between-two-inharmonic-
-
-    Keyword arguments:
-    results -- dictionary resulting from the main.main function
-    low -- low frequency cut in Hz, used to filter noise,
-           should be lower than rotor frequency
-    high -- high frequency cut in Hz, used to filter noise,
-            should higher than rotor frequency
-    rotor -- frequency at which the rotor is thought to rotate
-    debug -- makes fake ac_meas and ir_meas signals, used to test code
-    '''
-    ac_meas = results['ac_meas']
-    ir_meas = results['ir_meas']
-    freq = rotor  # hertz, used to calculate phase shift
-    N = len(ac_meas)
-    T = 1/results['sample_freq']
     if debug:
         print("debug activated")
-        phasediff = np.pi*debug
-        # timeshift = round(debug/T)
-        x = np.linspace(0.0, N*T, N)
-        ir_meas = np.sin(freq*2*np.pi*x+phasediff)
-        # ir_meas = np.roll(ir_meas, timeshift)
-        ac_meas = np.sin(freq*2*np.pi*x)
-    # band pass filter
-    ac_meas = butter_bandpass_filter(ac_meas,
-                                     low,
-                                     high,
-                                     results['sample_freq'],
-                                     order=6)
-    ir_meas = butter_bandpass_filter(ir_meas,
-                                     low,
-                                     high,
-                                     results['sample_freq'],
-                                     order=6)
-    # mean centering, SDV scaling
-    ac_meas = ac_meas-np.mean(ac_meas)
-    ac_meas = ac_meas/np.std(ac_meas)
-    ir_meas = ir_meas-np.mean(ir_meas)
-    ir_meas = ir_meas/np.std(ir_meas)
-    # calculate cross correlation of the two signal
-    xcorr = correlate(ir_meas, ac_meas)
-    # delta time array to match xcorrr
-    t = np.linspace(0.0, N*T, N, endpoint=False)
-    dt = np.linspace(-t[-1], t[-1], 2*N-1)
-    # dt = np.arange(1-N, N)
-    recovered_time_shift = dt[xcorr.argmax()]
-    # force the phase shift to be in [-pi:pi]
+        phasediff = np.pi * debug
+        x = np.linspace(0.0, n * dt_step, n, endpoint=False)
+        ir_meas = np.sin(freq * 2.0 * np.pi * x + phasediff)
+        ac_meas = np.sin(freq * 2.0 * np.pi * x)
+
+    ac_filt = butter_bandpass_filter(ac_meas, low, high, sample_freq, order=6)
+    ir_filt = butter_bandpass_filter(ir_meas, low, high, sample_freq, order=6)
+
+    ac_filt = ac_filt - np.mean(ac_filt)
+    ir_filt = ir_filt - np.mean(ir_filt)
+    ac_std = float(np.std(ac_filt))
+    ir_std = float(np.std(ir_filt))
+    if ac_std == 0.0 or ir_std == 0.0:
+        return float("nan")
+    ac_filt = ac_filt / ac_std
+    ir_filt = ir_filt / ir_std
+
+    xcorr = correlate(ir_filt, ac_filt)
+    t = np.linspace(0.0, n * dt_step, n, endpoint=False)
+    dt = np.linspace(-t[-1], t[-1], 2 * n - 1)
+    recovered_time_shift = float(dt[int(xcorr.argmax())])
     recovered_phase_shift = (
-        2*np.pi*(((0.5 + recovered_time_shift/(1/freq) % 1.0) - 0.5)))
+        2.0 * np.pi * (((0.5 + recovered_time_shift / (1.0 / freq)) % 1.0) - 0.5)
+    )
     if debug:
-        print("Recovered time shift {}".format(recovered_time_shift))
-        print("Recovered phase shift {} radian".format(recovered_phase_shift))
-        print("Recovered phase shift {} degrees"
-              .format(np.degrees(recovered_phase_shift)))
-    return np.degrees(recovered_phase_shift)
+        print(f"Recovered time shift {recovered_time_shift}")
+        print(f"Recovered phase shift {recovered_phase_shift} radian")
+        print(f"Recovered phase shift {np.degrees(recovered_phase_shift)} degrees")
+    return float(np.degrees(recovered_phase_shift))

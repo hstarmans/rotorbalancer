@@ -1,85 +1,87 @@
-import os
-from os.path import dirname
-from pathlib import Path
 import pickle
+from pathlib import Path
 
+from . import calc, main
 
-from . import main
-from . import calc
-
-root_folder = Path(dirname(dirname(dirname(__file__))),
-                   'measurements')
+root_folder = Path(__file__).resolve().parents[2] / "measurements"
 
 
 def runtest(starthz, endhz, stephz, foldername, repeat=1):
-    '''store infrared and accelerometer for a range of frequencies
-
-    starthz -- start frequency [Hz]
-    endhz -- end frequency [Hz]
-    stephz -- step frequency [Hz]
-    repeat -- time to repeat measurement
-    '''
-    for f in range(starthz, endhz, stephz):
-        print(f"measuring {f} Hz")
-        for i in range(0, repeat):
-            print(f"Cycle {i}")
-            folder_name = Path(root_folder, foldername)
-            if not os.path.exists(folder_name):
-                os.makedirs(folder_name)
-            res = main.main(frequency=f)
-            filename = Path(folder_name, str(f)+str(i)+'.p')
-            pickle.dump(res, open(filename, 'wb'))
+    """Capture and pickle accelerometer and IR signals over a frequency sweep."""
+    folder_path = root_folder / foldername
+    folder_path.mkdir(parents=True, exist_ok=True)
+    for freq in range(starthz, endhz, stephz):
+        print(f"measuring {freq} Hz")
+        for idx in range(repeat):
+            print(f"Cycle {idx}")
+            res = main.main(frequency=freq)
+            filename = folder_path / f"{freq}{idx}.p"
+            with open(filename, "wb") as f:
+                pickle.dump(res, f)
 
 
-def loadfiles(folder=None):
-    '''load measurements and get dataframe with results
+def loadfiles(folder=None, method="fft", **kwargs):
+    """Load pickled measurements from ``folder`` into a :class:`pandas.DataFrame`.
 
-    Keyword arguments are applied to get details functions
-
-    flt -- true applies bandpass butterwoth filter
-    verbose -- print debugging information
-    arithmic -- arithmic approach for fit
-    folder -- specify subfolder in measurements folder
-
-    Returns:
-    Dataframe with rows; rotor frequency, force and phase in degrees
-    '''
+    Parameters
+    ----------
+    folder : str | Path | None
+        Subfolder inside ``measurements/`` (or direct path). Defaults to ``measurements/``.
+    method : {'fft', 'details'}
+        Analysis function applied to each file (``calc.rotfreq_and_force`` or ``calc.getdetails``).
+    **kwargs
+        Extra keyword arguments forwarded when ``method='details'``.
+    """
     import pandas as pd
+
     if folder:
-        folder = Path(root_folder, folder)
+        candidate = Path(folder)
+        target_dir = candidate if candidate.is_dir() else root_folder / folder
     else:
-        folder = root_folder
+        target_dir = root_folder
 
-    files = [f for f in os.listdir(folder) if f.endswith('.p')]
+    files = sorted(target_dir.glob("*.p"))
+    if not files:
+        return pd.DataFrame()
 
-    df = None
-    for f in files:
-        # filename = join(folder, str(f)+str(i)+'.p')
-        dct = pickle.load(open(Path(folder, f), 'rb'))
-        # first 0.1 second selected
-        # quickly dampens out so only holds for first 0.1 second
-        # dct['ac_meas'] = dct['ac_meas'][50:150]
-        # dct['ir_meas'] = dct['ir_meas'][50:150]
-        results = pd.DataFrame(calc.rotfreq_and_force(dct),
-                               index=[0])
-        df = results if df is None else pd.concat([df, results])
-    return df
+    rows = []
+    for path in files:
+        with open(path, "rb") as f:
+            dct = pickle.load(f)
+        if method == "fft":
+            res = calc.rotfreq_and_force(dct)
+        elif method == "details":
+            res = calc.getdetails(dct, verbose=False, **kwargs)
+        else:
+            raise ValueError(f"Unsupported method {method!r}; choose 'fft' or 'details'")
+        rows.append(res)
+    return pd.DataFrame(rows)
 
 
-def plotfiles(df):
-    '''plot dataframe from load files'''
+def plotfiles(df, show=True):
+    """Plot force/amplitude and phase versus rotor frequency from :func:`loadfiles`."""
     import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(nrows=1,
-                             ncols=2,
-                             figsize=(12, 8))
-    fig.canvas.set_window_title("Degree and force plotted vs rotor frequency")
-    # plot two columns with respect to each other
-    axes[0].scatter(df['frot'], df['force'])
-    axes[0].title.set_text('Force vs rotor frequency')
-    axes[0].set(xlabel='Mean rotor frequency (Hz)', ylabel='Force (a.u.)')
+
+    if "frot" in df.columns:
+        freq_col, force_col, phase_col = "frot", "force", "deg"
+    else:
+        freq_col, force_col, phase_col = "freq_ir", "A_ac", "phase"
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 8))
+    if fig.canvas.manager is not None:
+        fig.canvas.manager.set_window_title("Degree and force plotted vs rotor frequency")
+
+    axes[0].scatter(df[freq_col], df[force_col])
+    axes[0].set_title("Force vs rotor frequency")
+    axes[0].set(xlabel="Mean rotor frequency (Hz)", ylabel="Force (a.u.)")
     axes[0].grid()
-    axes[1].scatter(df['frot'], df['deg'])
-    axes[1].title.set_text('Phase vs rotor frequency')
-    axes[1].set(xlabel='Mean rotor frequency (Hz)', ylabel='Phase (Degrees)')
+
+    axes[1].scatter(df[freq_col], df[phase_col])
+    axes[1].set_title("Phase vs rotor frequency")
+    axes[1].set(xlabel="Mean rotor frequency (Hz)", ylabel="Phase (Degrees)")
     axes[1].grid()
-    plt.show()
+
+    fig.tight_layout()
+    if show:
+        plt.show()
+    return fig

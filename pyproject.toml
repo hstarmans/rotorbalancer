@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rotorbalancer"
+version = "0.1.0"
+description = "Single-plane rotor balancer and tachometer using an Arduino Nano 33 BLE"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Rik Starmans", email = "hstarmans@hexastorm.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pyserial>=3.5",
+    "scipy>=1.11",
+]
+
+[project.urls]
+Blog = "https://hackaday.io/project/21933-open-hardware-fast-high-resolution-laser"
+Homepage = "https://www.hexastorm.com"
+Repository = "https://github.com/hstarmans/rotorbalancer"
+
+[project.scripts]
+rotorbalancer = "rotorbalancer.main:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

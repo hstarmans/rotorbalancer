@@ -1,5 +1,7 @@
 # Rotor Balancer
 
+> **Project Status:** Paused / reference implementation. The Python analysis package has been modernized and verified offline against the included `measurements/` dataset, but the hardware project is not actively developed at the moment.
+
 Single-plane rotor balancer and tachometer using an Arduino Nano 33 BLE. Built to balance quadcopter propellers or polygon laser scanner mirror motors.
 
 The Nano 33 BLE pulses the motor via hardware PWM and records acceleration via its onboard LSM9DS1 accelerometer chip while reading a [TCRT5000 IR LED](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module) optical trigger to track rotor phase.
@@ -88,6 +90,18 @@ On Linux, `ModemManager` interfered with the Arduino serial connection and had t
 sudo apt --purge remove modemmanager
 ```
 The accelerometer library from [SparkFun](https://github.com/sparkfun/SparkFun_LSM9DS1_Arduino_Library) is included in `nano33ble/lib/` in a slightly modified form.
+
+
+## Related Open-Source Projects & Future Directions
+Open-source dynamic balancing projects remain relatively rare compared to commercial industrial rigs, though two complementary references are worth noting:
+* **[indeterminatedesign/DynamicBalancer](https://github.com/indeterminatedesign/DynamicBalancer):** Open-source ESP32 + MPU6050 + Hall-effect phase trigger + 3D-printed desktop spin balancer.
+* **[MagedMohamedTurk/Turbomachinery-Rotors-Balancing](https://github.com/MagedMohamedTurk/Turbomachinery-Rotors-Balancing):** Python implementation of multi-plane Influence Coefficient balancing equations.
+
+If this project is revisited for a v2, the main upgrades would be:
+* **Hardware-timed phase + synchronous lock-in demodulation:** Timestamp each IR trigger via hardware interrupt (microsecond precision) and project accelerometer samples onto `cos(θ)` / `sin(θ)` per revolution, eliminating FFT bin quantization and RPM-drift errors.
+* **Influence Coefficient Method (1-plane & 2-plane):** Measure baseline (`V_0`) and known trial-weight (`V_t`) complex vectors to compute `W_corr = -V_0 / a` (1-plane) or `W_corr = -A⁻¹ × V_0` (2-plane) directly without modeling suspension stiffness.
+* **6-DOF SPI IMU upgrade:** Combine accelerometer (static force) and gyroscope (tilting couple moment) measurements from a fast SPI IMU (such as ICM-42688-P) when 2-plane balancing is needed.
+* **Practical correction:** Convert computed correction mass directly into calibrated aluminum-tape strip length (mm) for manual placement, rather than attempting automated wax/putty dispensing.
 
 
 ## BOM

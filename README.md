@@ -63,11 +63,6 @@ uv run ruff check src tests notebooks
 | [caddesigns/](caddesigns/) | Nano 33 BLE holder STLs & stabilizer FreeCAD CAD design |
 | [tests/](tests/) | Automated `pytest` verification against the recorded datasets and single-plane solver |
 
-## Video
-I made a video of the setup for a better impression:
-
-[<img src="https://img.youtube.com/vi/xFNtZbOfEfQ/maxresdefault.jpg" width="30%">](https://youtu.be/xFNtZbOfEfQ)
-
 
 ## Proven Single-Plane Balancing & Measurements
 

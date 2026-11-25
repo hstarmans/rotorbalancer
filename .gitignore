@@ -19,7 +19,7 @@ config.*
 .vscode*
 
 # Temporary files
-*.lock*
+.~lock.*
 *.000
 *.bak
 *.bck

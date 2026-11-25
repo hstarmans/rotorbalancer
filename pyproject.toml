@@ -9,13 +9,13 @@ description = "Single-plane rotor balancer and tachometer using an Arduino Nano 
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Rik Starmans", email = "hstarmans@hexastorm.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "matplotlib>=3.8",
-    "numpy>=1.26",
-    "pandas>=2.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.5",
+    "pandas>=3.1.1",
     "pyserial>=3.5",
-    "scipy>=1.11",
+    "scipy>=1.18.1",
 ]
 
 [project.urls]
@@ -28,8 +28,8 @@ rotorbalancer = "rotorbalancer.main:cli"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "ruff>=0.8",
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
 ]
 
 [tool.setuptools]

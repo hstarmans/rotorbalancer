@@ -19,7 +19,7 @@ Compile and upload the firmware in `nano33ble/` using PlatformIO (VS Code plugin
 Place a small piece of aluminum tape on the rotor, verify the IR sensor detects it, and adjust the threshold screw on the TCRT5000 module so it triggers cleanly once per revolution. Menu loops typically exit by sending `1`.
 
 ### 2. Python Host Tools (`src/rotorbalancer/`)
-Install dependencies with [uv](https://docs.astral.sh/uv/) (recommended, Python >= 3.10):
+Install dependencies with [uv](https://docs.astral.sh/uv/) (recommended, Python >= 3.12):
 
 ```console
 uv sync

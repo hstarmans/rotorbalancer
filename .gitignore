@@ -14,35 +14,12 @@ dist/
 *checkpoint*
 results.png
 
-# For PCBs designed using KiCad: http://www.kicad-pcb.org/
-config.*
+# Editor & temporary files
 .vscode*
-
-# Temporary files
 .~lock.*
-*.000
-*.bak
-*.bck
-*.kicad_pcb-bak
 *~
-_autosave-*
 *.tmp
-*-cache.lib
-*-rescue.lib
-*-save.pro
-*-save.kicad_pcb
-
-# KiCad / Autorouter / BOM exports
-*.net
-*.dsn
-*.ses
-*.gb*
-*.gt*
-*.gm*
-*.rar
-*.drl
-*.xml
-*.csv
+*.bak
 
 # FreeCAD temps
 .FCStd1

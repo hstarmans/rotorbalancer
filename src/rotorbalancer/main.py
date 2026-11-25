@@ -24,9 +24,6 @@ def upload_firmware(filename="nano33ble/src/Nano33_ble.cpp", port=None):
     sleep(3)  # wait for board to boot
 
 
-upload = upload_firmware
-
-
 def test_received(text):
     """Read lines from serial until ``text`` is observed and return that full line."""
     received, iteration = "", 0
@@ -40,13 +37,13 @@ def test_received(text):
     return received
 
 
-def getports(name="COM5"):
+def getports(name="Nano"):
     """Return serial ports whose description matches ``name``."""
     arduino_ports = [
         p.device for p in serial.tools.list_ports.comports() if name in p.description
     ]
     if not arduino_ports:
-        raise RuntimeError("Arduino Nano 33 BLE not detected")
+        raise RuntimeError("Arduino Nano 33 BLE not detected (pass --port explicitly)")
     return arduino_ports
 
 
@@ -62,7 +59,9 @@ def getserial(port=None):
 def set_frequency(frequency):
     """Set the hardware PWM pulse frequency of the Nano 33 BLE in Hz."""
     if frequency < 5:
-        raise ValueError("Frequency out of range (< 5 Hz); change clock divider in firmware")
+        raise ValueError(
+            "Frequency out of range (< 5 Hz); change clock divider in firmware"
+        )
     ser = getserial()
     test_received("Press 5 to set pulse frequency.")
     ser.write(b"5")
@@ -112,9 +111,15 @@ def main(frequency=20, plot=False, upload=False, port=None):
     }
     test_received("Measurement completed")
     sleep(1)
-    print(calc.rotfreq_and_force(results))
+    summary = calc.lockin_demodulate(results)
+    print(
+        f"Rotor: {summary['frot']:.2f} Hz | "
+        f"1xRPM wobble: {summary['amplitude']:.1f} a.u. @ {summary['phase_deg']:.1f} deg"
+    )
     if plot:
-        calc.plotdata(results)
+        from . import tools
+
+        tools.plot_time_signals(results)
     return results
 
 

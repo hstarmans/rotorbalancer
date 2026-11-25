@@ -15,7 +15,6 @@ dependencies = [
     "numpy>=2.5.5",
     "pandas>=3.1.1",
     "pyserial>=3.5",
-    "scipy>=1.18.1",
 ]
 
 [project.urls]
@@ -30,6 +29,9 @@ rotorbalancer = "rotorbalancer.main:cli"
 dev = [
     "pytest>=9.2.0",
     "ruff>=0.17.6",
+]
+notebook = [
+    "marimo>=0.26.0",
 ]
 
 [tool.setuptools]

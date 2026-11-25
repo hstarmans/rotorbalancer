@@ -1,6 +1,6 @@
 # Rotor Balancer
 
-> **Project Status:** Paused / reference implementation. The Python analysis package has been modernized and verified offline against the included `measurements/` dataset, but the hardware project is not actively developed at the moment.
+> **Project Status:** Hardware work is paused, while **single-plane balancing is proven and ready to use** on the Nano 33 BLE + Python workflow. The hardware build and all 30 recorded datasets come from 2021; years later, the Python package, synchronous lock-in demodulation, Influence Coefficient single-plane solver, and automated test suite were completed with AI assistance and verified against the original recordings.
 
 Single-plane rotor balancer and tachometer using an Arduino Nano 33 BLE. Built to balance quadcopter propellers or polygon laser scanner mirror motors.
 
@@ -19,18 +19,11 @@ Compile and upload the firmware in `nano33ble/` using PlatformIO (VS Code plugin
 Place a small piece of aluminum tape on the rotor, verify the IR sensor detects it, and adjust the threshold screw on the TCRT5000 module so it triggers cleanly once per revolution. Menu loops typically exit by sending `1`.
 
 ### 2. Python Host Tools (`src/rotorbalancer/`)
-Install dependencies with [uv](https://docs.astral.sh/uv/) (recommended, Python >= 3.12):
+Install and run with [uv](https://docs.astral.sh/uv/) (Python >= 3.12):
 
 ```console
 uv sync
 uv run rotorbalancer --plot --frequency 20 --filename 20hertz.p
-```
-
-Or install cleanly into a standard virtual environment with `pip`:
-
-```console
-pip install -e .
-python -m rotorbalancer.main --plot --frequency 20 --filename 20hertz.p
 ```
 
 Batch sweeps and offline analysis can also be run from Python (see example datasets in `measurements/` and [notebooks/trials.py](notebooks/trials.py)):
@@ -38,31 +31,37 @@ Batch sweeps and offline analysis can also be run from Python (see example datas
 ```python
 from rotorbalancer import tools
 
-# Analyze recorded runs (pass method="details" for cycle-by-cycle sine fitting)
-df = tools.loadfiles("without_weight", method="fft")
-print(df.describe())
+# Analyze recorded runs (returns rotor frequency, 1xRPM amplitude, phase, and complex vector)
+df = tools.loadfiles("without_weight")
+print(df[["frot", "amplitude", "phase_deg"]].describe())
 
 # Or capture a sweep on hardware
 # tools.runtest(10, 11, 1, "test")
+```
+
+Explore the 2021 measurements and single-plane calculator interactively in [marimo](https://marimo.io/):
+
+```console
+uv run --group notebook marimo edit notebooks/trials.py
 ```
 
 Run tests and linter offline on the included `measurements/` dataset:
 
 ```console
 uv run pytest -v
-uv run ruff check src tests
+uv run ruff check src tests notebooks
 ```
 
 ## Repository Map
 
 | Path | Purpose |
 | :--- | :--- |
-| [src/rotorbalancer/](src/rotorbalancer/) | FFT/sine-fit analysis (`calc.py`), CLI sampler (`main.py`), batch sweep/dataframe tools (`tools.py`) |
+| [src/rotorbalancer/](src/rotorbalancer/) | Synchronous lock-in & single-plane Influence Coefficient solver (`calc.py`), CLI sampler (`main.py`), batch sweep & plotting tools (`tools.py`) |
 | [nano33ble/](nano33ble/) | PlatformIO / Arduino Nano 33 BLE firmware & modified LSM9DS1 library |
 | [measurements/](measurements/) | Recorded vibration & IR datasets (`without_weight/`, `weight/`, `weight_5/`) |
-| [notebooks/trials.py](notebooks/trials.py) | Exploration script comparing unbalanced vs. balanced runs |
+| [notebooks/trials.py](notebooks/trials.py) | Interactive marimo notebook exploring the 30 recorded runs and single-plane solver |
 | [caddesigns/](caddesigns/) | Nano 33 BLE holder STLs & stabilizer FreeCAD CAD design |
-| [tests/](tests/) | Automated `pytest` verification against recorded datasets and multi-resolution FFTs |
+| [tests/](tests/) | Automated `pytest` verification against the recorded datasets and single-plane solver |
 
 ## Video
 I made a video of the setup for a better impression:
@@ -70,17 +69,66 @@ I made a video of the setup for a better impression:
 [<img src="https://img.youtube.com/vi/xFNtZbOfEfQ/maxresdefault.jpg" width="30%">](https://youtu.be/xFNtZbOfEfQ)
 
 
-## Measurements
-<img src="images/singleresult.png" align="center" width="60%"/><br>
+## Proven Single-Plane Balancing & Measurements
 
-For each measurement, the rotor is pulsed at a set frequency for 20 seconds to spin up.
-The motor is kept running while acceleration and the infrared signal are sampled for 1 second at 952 Hz (the maximum sample rate of the LSM9DS1 accelerometer).
-In single-plane balancing it is assumed that the force angle is independent of speed within the operating range.
-The phase difference between the IR sensor and accelerometer determines where putty needs to be applied.
-Frequency and amplitude are extracted via Fourier transform (first fundamental peak detection) or per-revolution sinusoid fitting (`calc.getdetails`).
-Results are repeatable with standard deviation in the range of 1–3% (see [notebooks/trials.py](notebooks/trials.py) and `measurements/`).
-A balance weight of 0.060 g [Weicon resin putty](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) was weighed using a Mettler Toledo AG204 DeltaRange balance.
-As a lower-cost alternative, small strips of aluminum tape can be cut to match mass by surface area, and a small strip is also used to trigger the IR LED sensor.
+### What we measure
+For each run, the rotor is pulsed for 20 seconds to spin up and sampled for 1 second at 952 Hz (the maximum rate of the onboard LSM9DS1 accelerometer). The Arduino records two time signals side by side: **acceleration over time** (how hard the motor assembly shakes) and the **TCRT5000 infrared trigger over time** (active-LOW: the digital output idles `HIGH` and drops `LOW` on each pass of the aluminum tape mark, latched in firmware between accelerometer reads so brief pulses are never missed). Projecting the accelerometer signal onto each revolution between consecutive falling trigger edges directly extracts the clean 1×RPM wobble amplitude and phase angle.
+
+<img src="images/time_signals.png" align="center" width="90%"/><br>
+
+### How single-plane balancing works
+For a flat rotor like a 30×30×2 mm prism or a propeller, single-plane balancing removes nearly all unbalance vibration without needing a mechanical model of the mounting stiffness or sensor filter delay:
+
+1. **Spin #1 — Measure the wobble vector $V_0$:** Run the rotor with no added weight. Think of the 1×RPM vibration as a clock-face arrow: its length $|V_0|$ is how hard the rotor shakes, and its angle $\angle V_0$ is when the shake peaks relative to the IR tape mark.
+2. **Spin #2 — Add one known trial weight $W_t$ and measure $V_t$:** Stick a small known weight (e.g. `60 mg` putty or measured aluminum tape) at a reference mark on the rim, spin at **roughly the same RPM**, and record the new vector $V_t$.
+3. **See how your setup reacts ($V_t - V_0$):** The difference vector automatically captures *both* your rig's mechanical sensitivity and total phase lag.
+4. **Cancel $V_0$ completely ($W_{\text{corr}}$):** Solve for the exact correction mass and angle that drive residual 1×RPM vibration to zero (or `additional_mass` if keeping the trial weight attached).
+
+#### Why two runs are enough (complex-number proof)
+At a fixed spin speed $\omega$, let $U \in \mathbb{C}$ be the unknown rotor unbalance and let $\alpha \in \mathbb{C}$ represent every unknown linear rig property combined (mounting stiffness, damping, accelerometer gain, mounting angle, sensor/firmware lag, and IR trigger offset):
+
+$$V_0 = \alpha \, U \qquad \text{(Run 1: baseline)}$$
+
+$$V_t = \alpha \, (U + W_t) = V_0 + \alpha \, W_t \qquad \text{(Run 2: with known trial weight } W_t\text{)}$$
+
+Subtracting Run 1 from Run 2 eliminates $U$ and solves directly for the complex influence coefficient $\alpha$:
+
+$$\alpha = \frac{V_t - V_0}{W_t}$$
+
+Setting the post-correction vibration $V_0 + \alpha \, W_{\text{corr}} = 0$ cancels $\alpha$ out of the ratio:
+
+$$W_{\text{corr}} = -\frac{V_0}{\alpha} = -W_t \, \frac{V_0}{V_t - V_0} \qquad\text{and}\qquad W_{\text{add}} = W_{\text{corr}} - W_t$$
+
+Only three practical assumptions apply: both runs share roughly the same speed so $\alpha(\omega)$ stays constant, the rig behaves linearly, and the rotor is thin enough to treat as a single plane.
+
+### Proven results on the 2021 prism dataset
+*(Note: The hardware build and all 30 `.p` recordings are from 2021; years later, synchronous lock-in demodulation (`calc.lockin_demodulate`) and the Influence Coefficient single-plane solver (`calc.single_plane_balance`) were added with AI assistance and verified directly against those original files.)*
+
+<img src="images/balancing_proof.png" align="center" width="95%"/><br>
+
+Adding **`0.060 g`** of [Weicon resin putty](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) (weighed on a Mettler Toledo AG204 DeltaRange balance) reduced 1×RPM vibration by **~6.6×** in the 48.5–53 Hz band (as a low-cost alternative to putty, measured strips of aluminum tape work cleanly by area-to-mass ratio). Measure Run 1 and Run 2 at roughly the same speed below the rig's ~60 Hz resonance (seen in `without_weight/101.p` at `58.5 Hz`); away from resonance, two independent speed groups agree to within **`1.4 mg` and `1.2°`**:
+
+| Speed band | $V_0$ (no weight) | $V_t$ (`0.060 g` trial putty) | Calculated optimal weight | Angle vs. trial spot |
+| :--- | :--- | :--- | :--- | :--- |
+| **`48.5–49.5 Hz`** (4 vs. 3 runs) | `148.1 @ 336.1°` | `20.6 @ 345.4°` | **`0.0695 g`** (`69.5 mg`) | **`+1.5°`** |
+| **`51.5–53.0 Hz`** (4 vs. 3 runs) | `188.4 @ 335.3°` | `30.2 @ 349.6°` | **`0.0709 g`** (`70.9 mg`) | **`+2.7°`** |
+
+```python
+import numpy as np
+from rotorbalancer import calc, tools
+
+df_base = tools.loadfiles("without_weight")
+df_trial = tools.loadfiles("weight")
+
+v0 = complex(np.mean(df_base.loc[df_base["frot"].between(48.5, 49.5), "vector"]))
+vt = complex(np.mean(df_trial.loc[df_trial["frot"].between(48.5, 49.5), "vector"]))
+
+print(calc.single_plane_balance(v0, vt, trial_mass=0.060))
+# Regenerate the figures above:
+# tools.plot_time_signals(save_path="images/time_signals.png", show=False)
+# tools.plot_balancing_summary(save_path="images/balancing_proof.png", show=False)
+```
+
 Further literature can be found on [ScienceDirect](https://www.sciencedirect.com/science/article/pii/S2351988616300185) and [National Instruments](https://forums.ni.com/t5/Example-Programs/Two-Plane-Balancing-Example-with-DAQmx/ta-p/3996066?profile.language=en).
 
 
@@ -93,15 +141,14 @@ The accelerometer library from [SparkFun](https://github.com/sparkfun/SparkFun_L
 
 
 ## Related Open-Source Projects & Future Directions
-Open-source dynamic balancing projects remain relatively rare compared to commercial industrial rigs, though two complementary references are worth noting:
+Single-plane balancing (sufficient for flat prisms and propellers) is the primary goal of this repo, and both **synchronous lock-in demodulation** (`calc.lockin_demodulate`) and the **Influence Coefficient solver** (`calc.single_plane_balance`) are now implemented and tested against the 2021 recordings. Open-source end-to-end balancing projects remain relatively rare compared to commercial rigs, though two complementary references are worth noting:
 * **[indeterminatedesign/DynamicBalancer](https://github.com/indeterminatedesign/DynamicBalancer):** Open-source ESP32 + MPU6050 + Hall-effect phase trigger + 3D-printed desktop spin balancer.
 * **[MagedMohamedTurk/Turbomachinery-Rotors-Balancing](https://github.com/MagedMohamedTurk/Turbomachinery-Rotors-Balancing):** Python implementation of multi-plane Influence Coefficient balancing equations.
 
-If this project is revisited for a v2, the main upgrades would be:
-* **Hardware-timed phase + synchronous lock-in demodulation:** Timestamp each IR trigger via hardware interrupt (microsecond precision) and project accelerometer samples onto `cos(θ)` / `sin(θ)` per revolution, eliminating FFT bin quantization and RPM-drift errors.
-* **Influence Coefficient Method (1-plane & 2-plane):** Measure baseline (`V_0`) and known trial-weight (`V_t`) complex vectors to compute `W_corr = -V_0 / a` (1-plane) or `W_corr = -A⁻¹ × V_0` (2-plane) directly without modeling suspension stiffness.
-* **6-DOF SPI IMU upgrade:** Combine accelerometer (static force) and gyroscope (tilting couple moment) measurements from a fast SPI IMU (such as ICM-42688-P) when 2-plane balancing is needed.
-* **Practical correction:** Convert computed correction mass directly into calibrated aluminum-tape strip length (mm) for manual placement, rather than attempting automated wax/putty dispensing.
+If the hardware side is revisited for a v2, the main practical upgrades would be:
+* **Hardware-interrupt IR timestamps + fast SPI IMU:** Timestamp each IR edge with microsecond precision instead of polling at 952 Hz, and pair it with a faster SPI IMU (e.g. ICM-42688-P) for sub-milligram resolution and sub-degree phase accuracy.
+* **Calibrated aluminum-tape workflow (semi-automatic):** Translate the calculated correction mass directly into cut length (mm) of calibrated aluminum tape instead of weighing putty or building a mechanical dispenser.
+* **Optional 2-plane mode (for long spindles only):** Combine accelerometer (static force) and gyroscope (tilting couple moment) channels from a 6-DOF IMU into a `2 × 2` Influence Coefficient matrix if tall rotors ever need couple balancing.
 
 
 ## BOM
@@ -110,4 +157,4 @@ If this project is revisited for a v2, the main upgrades would be:
 * **Accelerometer:** LSM9DS1 onboard the Arduino Nano 33 BLE.
 * **IR sensor:** TCRT5000 IR LED module (see [DIY LP turntable](https://www.stockholmviews.com/wp/diy-lp-turntable-tachometer/), bought at [OpenCircuit](https://opencircuit.nl/Product/TCRT5000-Infrarood-lijn-detectie-module)).
 * **Balancing putty:** Two-component epoxy resin putty from [Weicon](https://www.weicon.de/en/products/adhesives-and-sealants/2-component-adhesives-and-sealants/epoxy-resin-systems/plastic-metal/298/epoxy-resin-putty) or single-component UV-curable putty from [Schenck](http://www.schenck-worldwide.com/PDF/de-de1/Epoxidharz-Unwucht-Korrektursystem.pdf) (German: *Wuchtkitt*, ceramic-filled, ~2 g/cm³, ordered via [Modulor](https://www.modulor.de); turns green after mixing and cures hard over several hours). Alternatively, use lead or metal tape (lead density ~11 g/cm³).
-* **Optical plate:** Thorlabs aluminum breadboard with M6 screws as base. Avoid rigidly bolting the test unit to heavy structures; decouple it on foam or suspend it on cords (the prism motor assembly was suspended with strings during measurements).
+* **Mounting plate:** 3D-printed holder plate ([caddesigns/stabilizer.FCStd](caddesigns/stabilizer.FCStd)) mounted on a Thorlabs aluminum breadboard with M6 screws. As a general tip, avoid rigidly bolting the test unit to a heavy structure — compliant mounting (such as foam) increases vibration sensitivity.
